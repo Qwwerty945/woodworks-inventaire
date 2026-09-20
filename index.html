@@ -141,6 +141,7 @@
     <button class="tab-btn active" data-tab="dashboard">Tableau de bord</button>
     <button class="tab-btn" data-tab="inventory">Inventaire</button>
     <button class="tab-btn" data-tab="movements">Mouvements de stock</button>
+    <button class="tab-btn" data-tab="suppliers">Fournisseurs</button>
     <button class="tab-btn" data-tab="settings">Paramètres</button>
   </nav>
 </header>
@@ -182,7 +183,6 @@
         <select id="filter-cat"><option value="">Toutes les catégories</option></select>
         <label class="chk"><input type="checkbox" id="filter-low"> Stock bas uniquement</label>
         <div class="spacer"></div>
-        <button class="btn secondary" id="btn-manage-cats">Gérer les catégories</button>
         <button class="btn secondary" id="btn-export-csv">Exporter CSV</button>
         <button class="btn" id="btn-add-product">+ Ajouter un produit</button>
       </div>
@@ -253,11 +253,96 @@
     </div>
   </section>
 
+  <!-- SUPPLIERS / MATIÈRES PREMIÈRES -->
+  <section id="suppliers" class="tab-content">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Matières premières suivies</div><div class="value" id="sup-stat-refs">0</div></div>
+      <div class="stat-card"><div class="label">Achats du mois en cours</div><div class="value" id="sup-stat-month">$0.00</div></div>
+      <div class="stat-card"><div class="label">Total des dépenses</div><div class="value" id="sup-stat-total">$0.00</div></div>
+      <div class="stat-card"><div class="label">Fournisseurs actifs</div><div class="value" id="sup-stat-suppliers">0</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Matières premières — référentiel</h2>
+      <div class="toolbar">
+        <input type="text" id="sup-search" placeholder="Rechercher une matière, un fournisseur...">
+        <select id="sup-filter">
+          <option value="">Toutes les matières</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn secondary" id="btn-sup-export">Exporter CSV</button>
+        <button class="btn" id="btn-sup-add">+ Ajouter une matière première</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Matière première</th>
+              <th>Type</th>
+              <th>Unité d'achat</th>
+              <th>Fournisseur principal</th>
+              <th>Prix unitaire</th>
+              <th>Stock actuel</th>
+              <th>Dépense cumulée</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sup-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Enregistrer un achat de matière première</h2>
+      <form id="purchase-form" class="form-grid">
+        <div>
+          <label>Matière première</label>
+          <select id="pu-material" required></select>
+        </div>
+        <div>
+          <label>Fournisseur</label>
+          <input type="text" id="pu-supplier" placeholder="Ex : Scierie du Vercors">
+        </div>
+        <div>
+          <label>Quantité achetée</label>
+          <input type="number" id="pu-qty" min="0.01" step="0.01" required>
+        </div>
+        <div>
+          <label>Prix payé ($)</label>
+          <input type="number" id="pu-price" min="0" step="0.01" required>
+        </div>
+        <div>
+          <label>Date d'achat</label>
+          <input type="date" id="pu-date" required>
+        </div>
+        <div>
+          <label>N° de facture / bon</label>
+          <input type="text" id="pu-ref" placeholder="Ex : FA-2026-0142">
+        </div>
+        <div class="full" style="text-align:right;">
+          <button type="submit" class="btn">Enregistrer l'achat</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Journal des achats</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Matière première</th><th>Fournisseur</th><th>Quantité</th><th>Montant ($)</th><th>Facture</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="purchases-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- SETTINGS -->
   <section id="settings" class="tab-content">
     <div class="panel settings-box">
       <h2>Données &amp; sauvegarde</h2>
-      <p>Toutes les données (produits, catégories et mouvements) sont enregistrées localement dans le navigateur utilisé.
+      <p>Toutes les données (produits, catégories, mouvements, matières premières et achats) sont enregistrées localement dans le navigateur utilisé.
       Pour transférer vos données vers un autre poste, ou en garder une copie de sécurité, utilisez l'export
       et l'import ci-dessous.</p>
       <div class="settings-actions">
@@ -353,6 +438,8 @@
   var STORAGE_PRODUCTS = "ww_products_v1";
   var STORAGE_MOVEMENTS = "ww_movements_v1";
   var STORAGE_CATEGORIES = "ww_categories_v1";
+  var STORAGE_MATERIALS = "ww_materials_v1";
+  var STORAGE_PURCHASES = "ww_purchases_v1";
 
   function uid(prefix){
     return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -377,6 +464,30 @@
     return ["Planches","Poutres","Grumes","Bois de chauffage","Palettes","Panneaux","Copeaux/Sciure","Autre"];
   }
 
+  function seedMaterials(){
+    return [
+      {id:"mat1", nom:"Grumes de chêne", type:"Bois brut", unite:"m³", fournisseur:"Forêts du Perche", prixUnitaire:120, stock:0},
+      {id:"mat2", nom:"Grumes de hêtre", type:"Bois brut", unite:"m³", fournisseur:"Coopérative forestière Ardennes", prixUnitaire:98, stock:0},
+      {id:"mat3", nom:"Grumes de sapin", type:"Bois brut", unite:"m³", fournisseur:"Coopérative forestière Vosges", prixUnitaire:72, stock:0},
+      {id:"mat4", nom:"Planches de pin brut", type:"Bois débité", unite:"m³", fournisseur:"Scierie du Vercors", prixUnitaire:210, stock:0},
+      {id:"mat5", nom:"Palettes à fabriquer (bois)", type:"Bois débité", unite:"m³", fournisseur:"Scierie du Vercors", prixUnitaire:165, stock:0},
+      {id:"mat6", nom:"Colle à bois industrielle", type:"Consommable", unite:"kg", fournisseur:"Chimie du Bois SARL", prixUnitaire:8.5, stock:0},
+      {id:"mat7", nom:"Vernis / lasure", type:"Consommable", unite:"L", fournisseur:"Chimie du Bois SARL", prixUnitaire:14, stock:0},
+      {id:"mat8", nom:"Lames de scie à ruban", type:"Pièce d'usure", unite:"unités", fournisseur:"Outillage Pro", prixUnitaire:95, stock:0},
+      {id:"mat9", nom:"Gasoil engins forestiers", type:"Énergie", unite:"L", fournisseur:"TotalEnergies", prixUnitaire:1.75, stock:0},
+      {id:"mat10", nom:"Écorces et copeaux (sous-produit)", type:"Bois brut", unite:"m³", fournisseur:"Production interne", prixUnitaire:15, stock:0}
+    ];
+  }
+
+  function seedPurchases(){
+    return [
+      {id:uid("pu"), materialId:"mat1", fournisseur:"Forêts du Perche", quantite:40, montant:4800, date:"2026-09-12", reference:"FA-2026-0141"},
+      {id:uid("pu"), materialId:"mat6", fournisseur:"Chimie du Bois SARL", quantite:120, montant:1020, date:"2026-09-08", reference:"FA-2026-0138"},
+      {id:uid("pu"), materialId:"mat3", fournisseur:"Coopérative forestière Vosges", quantite:60, montant:4320, date:"2026-08-28", reference:"FA-2026-0130"},
+      {id:uid("pu"), materialId:"mat8", fournisseur:"Outillage Pro", quantite:10, montant:950, date:"2026-09-15", reference:"FA-2026-0145"}
+    ];
+  }
+
   function seedMovements(){
     return [
       {id:uid("m"), produitId:"p2", type:"Sortie", quantite:6, date:"2026-09-18", motif:"Commande client - Dupont Menuiserie"},
@@ -385,27 +496,35 @@
     ];
   }
 
-  var state = { products: [], movements: [], categories: [] };
+  var state = { products: [], movements: [], categories: [], materials: [], purchases: [] };
 
   function loadState(){
     try{
       var p = localStorage.getItem(STORAGE_PRODUCTS);
       var m = localStorage.getItem(STORAGE_MOVEMENTS);
       var c = localStorage.getItem(STORAGE_CATEGORIES);
+      var mat = localStorage.getItem(STORAGE_MATERIALS);
+      var pur = localStorage.getItem(STORAGE_PURCHASES);
       if(p && m){
         state.products = JSON.parse(p);
         state.movements = JSON.parse(m);
         state.categories = c ? JSON.parse(c) : seedCategories();
+        state.materials = mat ? JSON.parse(mat) : seedMaterials();
+        state.purchases = pur ? JSON.parse(pur) : seedPurchases();
       } else {
         state.products = seedProducts();
         state.movements = seedMovements();
         state.categories = seedCategories();
+        state.materials = seedMaterials();
+        state.purchases = seedPurchases();
         persist();
       }
     }catch(e){
       state.products = seedProducts();
       state.movements = seedMovements();
       state.categories = seedCategories();
+      state.materials = seedMaterials();
+      state.purchases = seedPurchases();
       persist();
     }
   }
@@ -414,6 +533,8 @@
     localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(state.products));
     localStorage.setItem(STORAGE_MOVEMENTS, JSON.stringify(state.movements));
     localStorage.setItem(STORAGE_CATEGORIES, JSON.stringify(state.categories));
+    localStorage.setItem(STORAGE_MATERIALS, JSON.stringify(state.materials));
+    localStorage.setItem(STORAGE_PURCHASES, JSON.stringify(state.purchases));
   }
 
   function fmtMoney(n){
@@ -788,6 +909,252 @@
     }).join("");
   }
 
+  // ---------- SUPPLIERS / MATIÈRES PREMIÈRES ----------
+  function materialById(id){
+    return state.materials.find(function(m){ return m.id === id; });
+  }
+
+  function spendForMaterial(id){
+    return state.purchases
+      .filter(function(p){ return p.materialId === id; })
+      .reduce(function(s,p){ return s + p.montant; }, 0);
+  }
+
+  function populateMaterialSelect(){
+    var sel = document.getElementById("pu-material");
+    var current = sel.value;
+    sel.innerHTML = state.materials.map(function(m){
+      return '<option value="'+m.id+'">'+escapeHtml(m.nom)+'</option>';
+    }).join("");
+    if(current) sel.value = current;
+  }
+
+  function populateSupplierFilter(){
+    var sel = document.getElementById("sup-filter");
+    var current = sel.value;
+    sel.innerHTML = '<option value="">Toutes les matières</option>' +
+      state.materials.map(function(m){ return '<option value="'+m.id+'">'+escapeHtml(m.nom)+'</option>'; }).join("");
+    sel.value = current;
+  }
+
+  function renderSuppliersTable(){
+    var tbody = document.getElementById("sup-tbody");
+    var q = document.getElementById("sup-search").value.trim().toLowerCase();
+    var matFilter = document.getElementById("sup-filter").value;
+
+    var list = state.materials.filter(function(m){
+      if(matFilter && m.id !== matFilter) return false;
+      if(q){
+        var hay = (m.nom+" "+m.type+" "+m.fournisseur).toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+
+    if(list.length === 0){
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-note">Aucune matière première ne correspond à ces critères.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(function(m){
+      var spent = spendForMaterial(m.id);
+      return '<tr>'+
+        '<td>'+escapeHtml(m.nom)+'</td>'+
+        '<td>'+escapeHtml(m.type||"-")+'</td>'+
+        '<td>'+escapeHtml(m.unite||"-")+'</td>'+
+        '<td>'+escapeHtml(m.fournisseur||"-")+'</td>'+
+        '<td>'+fmtMoney(m.prixUnitaire||0)+'</td>'+
+        '<td>'+fmtNum(m.stock||0)+' '+escapeHtml(m.unite||"")+'</td>'+
+        '<td>'+fmtMoney(spent)+'</td>'+
+        '<td class="actions-cell">'+
+          '<button class="btn small secondary" data-mat-edit="'+m.id+'">Modifier</button>'+
+          '<button class="btn small danger" data-mat-del="'+m.id+'">Supprimer</button>'+
+        '</td>'+
+      '</tr>';
+    }).join("");
+
+    tbody.querySelectorAll("[data-mat-edit]").forEach(function(b){
+      b.addEventListener("click", function(){ openMaterialModal(b.dataset.matEdit); });
+    });
+    tbody.querySelectorAll("[data-mat-del]").forEach(function(b){
+      b.addEventListener("click", function(){ deleteMaterial(b.dataset.matDel); });
+    });
+  }
+
+  function renderPurchasesTable(){
+    var tbody = document.getElementById("purchases-tbody");
+    var sorted = state.purchases.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    if(sorted.length === 0){
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-note">Aucun achat enregistré.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = sorted.map(function(p){
+      var m = materialById(p.materialId);
+      var nom = m ? m.nom : "(matière supprimée)";
+      var unite = m ? m.unite : "";
+      return '<tr>'+
+        '<td>'+p.date+'</td>'+
+        '<td>'+escapeHtml(nom)+'</td>'+
+        '<td>'+escapeHtml(p.fournisseur||"-")+'</td>'+
+        '<td>'+fmtNum(p.quantite)+' '+escapeHtml(unite)+'</td>'+
+        '<td>'+fmtMoney(p.montant)+'</td>'+
+        '<td>'+escapeHtml(p.reference||"-")+'</td>'+
+        '<td><button class="btn small danger" data-pur-del="'+p.id+'">Supprimer</button></td>'+
+      '</tr>';
+    }).join("");
+
+    tbody.querySelectorAll("[data-pur-del]").forEach(function(b){
+      b.addEventListener("click", function(){ deletePurchase(b.dataset.purDel); });
+    });
+  }
+
+  function renderSuppliersDashboard(){
+    document.getElementById("sup-stat-refs").textContent = state.materials.length;
+
+    var now = new Date();
+    var ym = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+    var monthTotal = state.purchases
+      .filter(function(p){ return (p.date||"").slice(0,7) === ym; })
+      .reduce(function(s,p){ return s + p.montant; }, 0);
+    document.getElementById("sup-stat-month").textContent = fmtMoney(monthTotal);
+
+    var total = state.purchases.reduce(function(s,p){ return s + p.montant; }, 0);
+    document.getElementById("sup-stat-total").textContent = fmtMoney(total);
+
+    var supSet = {};
+    state.purchases.forEach(function(p){ if(p.fournisseur) supSet[p.fournisseur] = 1; });
+    var names = Object.keys(supSet);
+    document.getElementById("sup-stat-suppliers").textContent = names.length;
+  }
+
+  function renderSuppliers(){
+    renderSuppliersTable();
+    renderPurchasesTable();
+    renderSuppliersDashboard();
+    populateMaterialSelect();
+    populateSupplierFilter();
+  }
+
+  function openMaterialModal(id){
+    var m = id ? materialById(id) : null;
+    var nom = prompt("Nom de la matière première :", m ? m.nom : "");
+    if(nom === null) return;
+    nom = nom.trim();
+    if(!nom) return;
+
+    var type = prompt("Type (Bois brut, Bois débité, Consommable, Pièce d'usure, Énergie...) :", m ? (m.type||"") : "Bois brut");
+    if(type === null) return;
+
+    var unite = prompt("Unité d'achat (m³, unités, kg, L...) :", m ? (m.unite||"") : "m³");
+    if(unite === null) return;
+
+    var fournisseur = prompt("Fournisseur principal :", m ? (m.fournisseur||"") : "");
+    if(fournisseur === null) return;
+
+    var prixStr = prompt("Prix unitaire ($) :", m ? String(m.prixUnitaire||0) : "0");
+    if(prixStr === null) return;
+    var prix = parseFloat(prixStr) || 0;
+
+    var stockStr = prompt("Stock actuel :", m ? String(m.stock||0) : "0");
+    if(stockStr === null) return;
+    var stock = parseFloat(stockStr) || 0;
+
+    var data = {
+      nom: nom,
+      type: type.trim(),
+      unite: unite.trim(),
+      fournisseur: fournisseur.trim(),
+      prixUnitaire: prix,
+      stock: stock
+    };
+
+    if(m){
+      Object.assign(m, data);
+      toast("Matière première mise à jour.");
+    } else {
+      data.id = uid("mat");
+      state.materials.push(data);
+      toast("Matière première ajoutée.");
+    }
+    persist();
+    renderSuppliers();
+  }
+
+  function deleteMaterial(id){
+    var m = materialById(id);
+    if(!m) return;
+    var n = state.purchases.filter(function(p){ return p.materialId === id; }).length;
+    var msg = n > 0
+      ? 'Supprimer "'+m.nom+" ? "+n+" achat(s) enregistré(s) pour cette matière seront également supprimés du journal des dépenses."
+      : 'Supprimer "'+m.nom+'" ?';
+    if(!confirm(msg)) return;
+    state.materials = state.materials.filter(function(x){ return x.id !== id; });
+    state.purchases = state.purchases.filter(function(p){ return p.materialId !== id; });
+    persist();
+    renderSuppliers();
+    toast("Matière première supprimée.");
+  }
+
+  function deletePurchase(id){
+    var p = state.purchases.find(function(x){ return x.id === id; });
+    if(!p) return;
+    if(!confirm("Supprimer cet achat du journal des dépenses ?")) return;
+    state.purchases = state.purchases.filter(function(x){ return x.id !== id; });
+    persist();
+    renderSuppliers();
+    toast("Achat supprimé.");
+  }
+
+  document.getElementById("pu-date").value = new Date().toISOString().slice(0,10);
+
+  document.getElementById("purchase-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var materialId = document.getElementById("pu-material").value;
+    var m = materialById(materialId);
+    if(!m) return;
+
+    var fournisseur = document.getElementById("pu-supplier").value.trim() || m.fournisseur || "";
+    var qty = parseFloat(document.getElementById("pu-qty").value) || 0;
+    var prix = parseFloat(document.getElementById("pu-price").value) || 0;
+    var date = document.getElementById("pu-date").value;
+    var reference = document.getElementById("pu-ref").value.trim();
+    if(qty <= 0) return;
+
+    state.purchases.unshift({
+      id: uid("pu"),
+      materialId: materialId,
+      fournisseur: fournisseur,
+      quantite: qty,
+      montant: prix,
+      date: date,
+      reference: reference
+    });
+
+    m.stock = (m.stock||0) + qty;
+
+    persist();
+    this.reset();
+    document.getElementById("pu-date").value = new Date().toISOString().slice(0,10);
+    renderSuppliers();
+    toast("Achat enregistré.");
+  });
+
+  document.getElementById("sup-search").addEventListener("input", renderSuppliersTable);
+  document.getElementById("sup-filter").addEventListener("change", renderSuppliersTable);
+  document.getElementById("btn-sup-add").addEventListener("click", function(){ openMaterialModal(null); });
+
+  document.getElementById("btn-sup-export").addEventListener("click", function(){
+    var headers = ["Matière première","Type","Unité","Fournisseur principal","Prix unitaire ($)","Stock actuel","Dépense cumulée ($)"];
+    var rows = state.materials.map(function(m){
+      return [m.nom, m.type, m.unite, m.fournisseur, m.prixUnitaire, m.stock, spendForMaterial(m.id).toFixed(2)];
+    });
+    var csv = "\uFEFF" + [headers].concat(rows).map(function(r){
+      return r.map(function(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }).join(";");
+    }).join("\r\n");
+    downloadBlob(csv, "woodworks-matiere-premiere.csv", "text/csv;charset=utf-8;");
+    toast("Export CSV généré.");
+  });
+
   // ---------- CATEGORIES ----------
   var catOverlay = document.getElementById("cat-overlay");
 
@@ -895,7 +1262,7 @@
 
   // ---------- SETTINGS ----------
   document.getElementById("btn-export-json").addEventListener("click", function(){
-    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements, categories: state.categories };
+    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements, categories: state.categories, materials: state.materials, purchases: state.purchases };
     downloadBlob(JSON.stringify(backup, null, 2), "woodworks-sauvegarde.json", "application/json");
     toast("Sauvegarde JSON générée.");
   });
@@ -909,16 +1276,21 @@
         var data = JSON.parse(evt.target.result);
         if(!data.products || !data.movements) throw new Error("format invalide");
         if(!Array.isArray(data.categories)) data.categories = seedCategories();
+        if(!Array.isArray(data.materials)) data.materials = seedMaterials();
+        if(!Array.isArray(data.purchases)) data.purchases = seedPurchases();
         if(!confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) return;
         state.products = data.products;
         state.movements = data.movements;
         state.categories = data.categories;
+        state.materials = data.materials;
+        state.purchases = data.purchases;
         persist();
         refreshFilterOptions();
         renderInventoryTable();
         populateMovementProductSelect();
         renderMovementsTable();
         renderDashboard();
+        renderSuppliers();
         toast("Sauvegarde importée avec succès.");
       }catch(err){
         alert("Le fichier sélectionné n'est pas une sauvegarde valide.");
@@ -933,12 +1305,15 @@
     state.products = seedProducts();
     state.movements = seedMovements();
     state.categories = seedCategories();
+    state.materials = seedMaterials();
+    state.purchases = seedPurchases();
     persist();
     refreshFilterOptions();
     renderInventoryTable();
     populateMovementProductSelect();
     renderMovementsTable();
     renderDashboard();
+    renderSuppliers();
     toast("Données de démonstration restaurées.");
   });
 
@@ -949,6 +1324,7 @@
   populateMovementProductSelect();
   renderMovementsTable();
   renderDashboard();
+  renderSuppliers();
 
 })();
 </script>
