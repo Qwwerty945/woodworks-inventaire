@@ -142,6 +142,7 @@
     <button class="tab-btn" data-tab="inventory">Inventaire</button>
     <button class="tab-btn" data-tab="movements">Mouvements de stock</button>
     <button class="tab-btn" data-tab="suppliers">Fournisseurs</button>
+    <button class="tab-btn" data-tab="employees">Employés</button>
     <button class="tab-btn" data-tab="settings">Paramètres</button>
   </nav>
 </header>
@@ -183,6 +184,7 @@
         <select id="filter-cat"><option value="">Toutes les catégories</option></select>
         <label class="chk"><input type="checkbox" id="filter-low"> Stock bas uniquement</label>
         <div class="spacer"></div>
+        <button class="btn secondary" id="btn-manage-cats">Gérer les catégories</button>
         <button class="btn secondary" id="btn-export-csv">Exporter CSV</button>
         <button class="btn" id="btn-add-product">+ Ajouter un produit</button>
       </div>
@@ -338,11 +340,68 @@
     </div>
   </section>
 
+  <!-- EMPLOYEES -->
+  <section id="employees" class="tab-content">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Employés actifs</div><div class="value" id="emp-stat-active">0</div></div>
+      <div class="stat-card"><div class="label">Grades différents</div><div class="value" id="emp-stat-grades">0</div></div>
+      <div class="stat-card"><div class="label">Administrateurs</div><div class="value" id="emp-stat-admins">0</div></div>
+      <div class="stat-card alert"><div class="label">Comptes désactivés</div><div class="value" id="emp-stat-off">0</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Grille des grades et des accès</h2>
+      <p style="font-size:13px;color:var(--muted);margin-top:0;">
+        Chaque grade donne accès à un ensemble de modules. Cliquez sur un grade pour voir le détail des accès.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Grade</th><th>Niveau</th><th>Accès aux modules</th><th>Effectif</th></tr>
+          </thead>
+          <tbody id="grade-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Liste des employés</h2>
+      <div class="toolbar">
+        <input type="text" id="emp-search" placeholder="Rechercher un nom, un poste, un grade...">
+        <select id="emp-filter-grade"><option value="">Tous les grades</option></select>
+        <select id="emp-filter-status">
+          <option value="">Tous les statuts</option>
+          <option value="Actif">Actifs</option>
+          <option value="Inactif">Inactifs</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn secondary" id="btn-emp-export">Exporter CSV</button>
+        <button class="btn" id="btn-emp-add">+ Ajouter un employé</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Poste</th>
+              <th>Grade</th>
+              <th>Niveau d'accès</th>
+              <th>Accès autorisés</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="emp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- SETTINGS -->
   <section id="settings" class="tab-content">
     <div class="panel settings-box">
       <h2>Données &amp; sauvegarde</h2>
-      <p>Toutes les données (produits, catégories, mouvements, matières premières et achats) sont enregistrées localement dans le navigateur utilisé.
+      <p>Toutes les données (produits, catégories, mouvements, matières premières, achats, employés et grades) sont enregistrées localement dans le navigateur utilisé.
       Pour transférer vos données vers un autre poste, ou en garder une copie de sécurité, utilisez l'export
       et l'import ci-dessous.</p>
       <div class="settings-actions">
@@ -357,6 +416,75 @@
   </section>
 
 </main>
+
+<div class="modal-overlay hidden" id="emp-overlay">
+  <div class="modal">
+    <h3 id="emp-title">Ajouter un employé</h3>
+    <form id="emp-form" class="form-grid">
+      <input type="hidden" id="e-id">
+      <div class="full">
+        <label>Nom complet</label>
+        <input type="text" id="e-nom" required placeholder="Ex : Bruno Marchand">
+      </div>
+      <div>
+        <label>Poste</label>
+        <input type="text" id="e-poste" placeholder="Ex : Chef d'équipe sciage">
+      </div>
+      <div>
+        <label>E-mail professionnel</label>
+        <input type="email" id="e-email" placeholder="Ex : b.marchand@woodworks.example">
+      </div>
+      <div>
+        <label>Grade</label>
+        <select id="e-grade" required></select>
+      </div>
+      <div>
+        <label>Statut</label>
+        <select id="e-statut">
+          <option>Actif</option>
+          <option>Inactif</option>
+        </select>
+      </div>
+      <div>
+        <label>Date d'embauche</label>
+        <input type="date" id="e-embauche">
+      </div>
+      <div class="full">
+        <label>Accès accordés par ce grade</label>
+        <div id="e-access-preview" style="font-size:12.5px;color:var(--muted);padding:8px 10px;border:1px dashed var(--border);border-radius:7px;background:#fdfaf4;"></div>
+      </div>
+      <div class="full" style="text-align:right;border-top:1px solid var(--border);padding-top:12px;">
+        <button type="button" class="btn secondary" id="btn-grade-manage">Gérer les grades &amp; accès</button>
+        <button type="button" class="btn secondary" id="btn-emp-cancel">Annuler</button>
+        <button type="submit" class="btn">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="grade-overlay">
+  <div class="modal">
+    <h3>Grades &amp; niveaux d'accès</h3>
+    <p style="font-size:13.5px;color:var(--muted);margin-top:0;">
+      Cochez les modules auxquels chaque grade a accès. Les modifications sont enregistrées immédiatement.
+    </p>
+    <div id="grade-manager"></div>
+    <div class="toolbar" style="margin-top:6px;">
+      <input type="text" id="new-grade-nom" placeholder="Nouveau grade..." style="flex:1;">
+      <select id="new-grade-niveau">
+        <option value="1">Niveau 1 — consultation</option>
+        <option value="2">Niveau 2 — opérateur</option>
+        <option value="3">Niveau 3 — responsable</option>
+        <option value="4">Niveau 4 — encadrement</option>
+        <option value="5">Niveau 5 — direction</option>
+      </select>
+      <button type="button" class="btn" id="btn-grade-add">+ Ajouter un grade</button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn secondary" id="btn-grade-cancel">Fermer</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay hidden" id="cat-overlay">
   <div class="modal">
@@ -440,9 +568,43 @@
   var STORAGE_CATEGORIES = "ww_categories_v1";
   var STORAGE_MATERIALS = "ww_materials_v1";
   var STORAGE_PURCHASES = "ww_purchases_v1";
+  var STORAGE_EMPLOYEES = "ww_employees_v1";
+  var STORAGE_GRADES = "ww_grades_v1";
 
   function uid(prefix){
     return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  // Modules de l'application et grades d'accès
+  var MODULES = ["Tableau de bord","Inventaire","Mouvements de stock","Fournisseurs","Employés","Paramètres"];
+
+  function seedGrades(){
+    return [
+      {id:"g1", nom:"Direction", niveau:5, acces:["Tableau de bord","Inventaire","Mouvements de stock","Fournisseurs","Employés","Paramètres"]},
+      {id:"g2", nom:"Responsable scierie", niveau:4, acces:["Tableau de bord","Inventaire","Mouvements de stock","Fournisseurs","Employés"]},
+      {id:"g3", nom:"Responsable achats", niveau:3, acces:["Tableau de bord","Fournisseurs","Inventaire"]},
+      {id:"g4", nom:"Chef d'équipe", niveau:3, acces:["Tableau de bord","Inventaire","Mouvements de stock"]},
+      {id:"g5", nom:"Opérateur machine", niveau:2, acces:["Inventaire","Mouvements de stock"]},
+      {id:"g6", nom:"Magasinier", niveau:2, acces:["Tableau de bord","Inventaire"]},
+      {id:"g7", nom:"Commercial", niveau:2, acces:["Tableau de bord","Inventaire"]},
+      {id:"g8", nom:"Comptabilité", niveau:3, acces:["Tableau de bord","Fournisseurs","Paramètres"]},
+      {id:"g9", nom:"Apprenti", niveau:1, acces:["Inventaire"]}
+    ];
+  }
+
+  function seedEmployees(){
+    return [
+      {id:"e1", nom:"Martine Lefèvre", poste:"Directrice générale", gradeId:"g1", statut:"Actif", embauche:"2014-03-01", email:"m.lefevre@woodworks.example"},
+      {id:"e2", nom:"Bruno Marchand", poste:"Responsable de scierie", gradeId:"g2", statut:"Actif", embauche:"2016-09-12", email:"b.marchand@woodworks.example"},
+      {id:"e3", nom:"Séverine Colin", poste:"Responsable achats bois", gradeId:"g3", statut:"Actif", embauche:"2018-01-22", email:"s.colin@woodworks.example"},
+      {id:"e4", nom:"Karim Bouzid", poste:"Chef d'équipe sciage", gradeId:"g4", statut:"Actif", embauche:"2019-05-06", email:"k.bouzid@woodworks.example"},
+      {id:"e5", nom:"Lucie Tanguy", poste:"Opératrice déligneuse", gradeId:"g5", statut:"Actif", embauche:"2021-09-01", email:"l.tanguy@woodworks.example"},
+      {id:"e6", nom:"Damien Roux", poste:"Opérateur scie à ruban", gradeId:"g5", statut:"Actif", embauche:"2020-11-16", email:"d.roux@woodworks.example"},
+      {id:"e7", nom:"Nadia Otmani", poste:"Magasinière", gradeId:"g6", statut:"Actif", embauche:"2022-02-14", email:"n.otmani@woodworks.example"},
+      {id:"e8", nom:"Thierry Gauthier", poste:"Commercial bois", gradeId:"g7", statut:"Actif", embauche:"2017-06-19", email:"t.gauthier@woodworks.example"},
+      {id:"e9", nom:"Camille Perrin", poste:"Comptable", gradeId:"g8", statut:"Actif", embauche:"2023-04-03", email:"c.perrin@woodworks.example"},
+      {id:"e10", nom:"Hugo Bertrand", poste:"Apprenti sciage", gradeId:"g9", statut:"Inactif", embauche:"2025-09-01", email:"h.bertrand@woodworks.example"}
+    ];
   }
 
   function seedProducts(){
@@ -496,7 +658,7 @@
     ];
   }
 
-  var state = { products: [], movements: [], categories: [], materials: [], purchases: [] };
+  var state = { products: [], movements: [], categories: [], materials: [], purchases: [], employees: [], grades: [] };
 
   function loadState(){
     try{
@@ -505,18 +667,24 @@
       var c = localStorage.getItem(STORAGE_CATEGORIES);
       var mat = localStorage.getItem(STORAGE_MATERIALS);
       var pur = localStorage.getItem(STORAGE_PURCHASES);
+      var emp = localStorage.getItem(STORAGE_EMPLOYEES);
+      var grd = localStorage.getItem(STORAGE_GRADES);
       if(p && m){
         state.products = JSON.parse(p);
         state.movements = JSON.parse(m);
         state.categories = c ? JSON.parse(c) : seedCategories();
         state.materials = mat ? JSON.parse(mat) : seedMaterials();
         state.purchases = pur ? JSON.parse(pur) : seedPurchases();
+        state.employees = emp ? JSON.parse(emp) : seedEmployees();
+        state.grades = grd ? JSON.parse(grd) : seedGrades();
       } else {
         state.products = seedProducts();
         state.movements = seedMovements();
         state.categories = seedCategories();
         state.materials = seedMaterials();
         state.purchases = seedPurchases();
+        state.employees = seedEmployees();
+        state.grades = seedGrades();
         persist();
       }
     }catch(e){
@@ -525,6 +693,8 @@
       state.categories = seedCategories();
       state.materials = seedMaterials();
       state.purchases = seedPurchases();
+      state.employees = seedEmployees();
+      state.grades = seedGrades();
       persist();
     }
   }
@@ -535,6 +705,8 @@
     localStorage.setItem(STORAGE_CATEGORIES, JSON.stringify(state.categories));
     localStorage.setItem(STORAGE_MATERIALS, JSON.stringify(state.materials));
     localStorage.setItem(STORAGE_PURCHASES, JSON.stringify(state.purchases));
+    localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(state.employees));
+    localStorage.setItem(STORAGE_GRADES, JSON.stringify(state.grades));
   }
 
   function fmtMoney(n){
@@ -1155,6 +1327,299 @@
     toast("Export CSV généré.");
   });
 
+  // ---------- EMPLOYES / GRADES ----------
+  function gradeById(id){
+    return state.grades.find(function(g){ return g.id === id; });
+  }
+
+  function employeeCountForGrade(id){
+    return state.employees.filter(function(e){ return e.gradeId === id; }).length;
+  }
+
+  function accessLabel(acces){
+    if(!acces || acces.length === 0) return "Aucun accès";
+    if(acces.length === MODULES.length) return "Tous les modules";
+    return acces.join(" · ");
+  }
+
+  function renderGradesTable(){
+    var tbody = document.getElementById("grade-tbody");
+    var grades = state.grades.slice().sort(function(a,b){ return (b.niveau||0) - (a.niveau||0); });
+    if(grades.length === 0){
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-note">Aucun grade défini.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = grades.map(function(g){
+      var n = employeeCountForGrade(g.id);
+      return '<tr>'+
+        '<td><strong>'+escapeHtml(g.nom)+'</strong></td>'+
+        '<td><span class="badge">Niveau '+g.niveau+'</span></td>'+
+        '<td style="font-size:12.5px;color:var(--muted)">'+escapeHtml(accessLabel(g.acces))+'</td>'+
+        '<td>'+n+' employé'+(n>1?"s":"")+'</td>'+
+      '</tr>';
+    }).join("");
+  }
+
+  function populateGradeSelects(){
+    var f = document.getElementById("emp-filter-grade");
+    var curF = f.value;
+    f.innerHTML = '<option value="">Tous les grades</option>' +
+      state.grades.map(function(g){ return '<option value="'+g.id+'">'+escapeHtml(g.nom)+'</option>'; }).join("");
+    f.value = curF;
+
+    var s = document.getElementById("e-grade");
+    if(s){
+      var curS = s.value;
+      s.innerHTML = state.grades.slice().sort(function(a,b){ return (b.niveau||0)-(a.niveau||0); })
+        .map(function(g){ return '<option value="'+g.id+'">'+escapeHtml(g.nom)+' (niveau '+g.niveau+')</option>'; }).join("");
+      if(curS) s.value = curS;
+    }
+  }
+
+  function renderEmployeesTable(){
+    var tbody = document.getElementById("emp-tbody");
+    var q = document.getElementById("emp-search").value.trim().toLowerCase();
+    var gf = document.getElementById("emp-filter-grade").value;
+    var sf = document.getElementById("emp-filter-status").value;
+
+    var list = state.employees.filter(function(e){
+      if(gf && e.gradeId !== gf) return false;
+      if(sf && e.statut !== sf) return false;
+      if(q){
+        var g = gradeById(e.gradeId);
+        var hay = (e.nom+" "+(e.poste||"")+" "+(g?g.nom:"")).toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+
+    list.sort(function(a,b){ return a.nom.localeCompare(b.nom, "fr"); });
+
+    if(list.length === 0){
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-note">Aucun employé ne correspond à ces critères.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(function(e){
+      var g = gradeById(e.gradeId);
+      var gradeNom = g ? g.nom : "—";
+      var niveau = g ? g.niveau : "—";
+      var acces = g ? accessLabel(g.acces) : "—";
+      var actif = e.statut === "Actif";
+      return '<tr>'+
+        '<td><strong>'+escapeHtml(e.nom)+'</strong><br><span style="font-size:11.5px;color:var(--muted)">'+escapeHtml(e.email||"")+'</span></td>'+
+        '<td>'+escapeHtml(e.poste||"—")+'</td>'+
+        '<td>'+escapeHtml(gradeNom)+'</td>'+
+        '<td><span class="badge">Niveau '+niveau+'</span></td>'+
+        '<td style="font-size:12px;color:var(--muted);max-width:280px">'+escapeHtml(acces)+'</td>'+
+        '<td><span class="badge'+(actif?"":" low")+'">'+escapeHtml(e.statut)+'</span></td>'+
+        '<td class="actions-cell">'+
+          '<button class="btn small secondary" data-emp-edit="'+e.id+'">Modifier</button>'+
+          '<button class="btn small danger" data-emp-del="'+e.id+'">Supprimer</button>'+
+        '</td>'+
+      '</tr>';
+    }).join("");
+
+    tbody.querySelectorAll("[data-emp-edit]").forEach(function(b){
+      b.addEventListener("click", function(){ openEmployeeModal(b.dataset.empEdit); });
+    });
+    tbody.querySelectorAll("[data-emp-del]").forEach(function(b){
+      b.addEventListener("click", function(){ deleteEmployee(b.dataset.empDel); });
+    });
+  }
+
+  function renderEmployeesDashboard(){
+    document.getElementById("emp-stat-active").textContent = state.employees.filter(function(e){ return e.statut === "Actif"; }).length;
+    document.getElementById("emp-stat-grades").textContent = state.grades.length;
+    var adminIds = state.grades.filter(function(g){ return g.niveau >= 5; }).map(function(g){ return g.id; });
+    document.getElementById("emp-stat-admins").textContent = state.employees.filter(function(e){ return adminIds.indexOf(e.gradeId) !== -1; }).length;
+    document.getElementById("emp-stat-off").textContent = state.employees.filter(function(e){ return e.statut !== "Actif"; }).length;
+  }
+
+  function renderEmployees(){
+    renderGradesTable();
+    renderEmployeesTable();
+    renderEmployeesDashboard();
+    populateGradeSelects();
+  }
+
+  var empOverlay = document.getElementById("emp-overlay");
+
+  document.getElementById("btn-emp-add").addEventListener("click", function(){ openEmployeeModal(null); });
+  document.getElementById("btn-emp-cancel").addEventListener("click", function(){ empOverlay.classList.add("hidden"); });
+  empOverlay.addEventListener("click", function(e){ if(e.target === empOverlay) empOverlay.classList.add("hidden"); });
+
+  document.getElementById("btn-grade-manage").addEventListener("click", function(){ openGradeManager(); });
+  document.getElementById("btn-grade-cancel").addEventListener("click", function(){ document.getElementById("grade-overlay").classList.add("hidden"); });
+  document.getElementById("grade-overlay").addEventListener("click", function(e){
+    if(e.target === document.getElementById("grade-overlay")) document.getElementById("grade-overlay").classList.add("hidden");
+  });
+
+  function openEmployeeModal(id){
+    var e = id ? state.employees.find(function(x){ return x.id === id; }) : null;
+    document.getElementById("emp-title").textContent = e ? "Modifier l'employé" : "Ajouter un employé";
+    document.getElementById("e-id").value = e ? e.id : "";
+    document.getElementById("e-nom").value = e ? e.nom : "";
+    document.getElementById("e-poste").value = e ? (e.poste||"") : "";
+    document.getElementById("e-email").value = e ? (e.email||"") : "";
+    document.getElementById("e-embauche").value = e ? (e.embauche||"") : new Date().toISOString().slice(0,10);
+    document.getElementById("e-statut").value = e ? e.statut : "Actif";
+    populateGradeSelects();
+    if(e) document.getElementById("e-grade").value = e.gradeId;
+    updateAccessPreview();
+    empOverlay.classList.remove("hidden");
+  }
+
+  function updateAccessPreview(){
+    var g = gradeById(document.getElementById("e-grade").value);
+    var box = document.getElementById("e-access-preview");
+    if(!g){ box.textContent = "Sélectionnez un grade pour voir les accès."; return; }
+    box.innerHTML = '<strong>'+escapeHtml(g.nom)+'</strong> — niveau '+g.niveau+'<br>' +
+      (g.acces||[]).map(function(a){ return '<span class="badge" style="margin:3px 4px 0 0">'+escapeHtml(a)+'</span>'; }).join("");
+  }
+  document.getElementById("e-grade").addEventListener("change", updateAccessPreview);
+
+  document.getElementById("emp-form").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    var id = document.getElementById("e-id").value;
+    var data = {
+      nom: document.getElementById("e-nom").value.trim(),
+      poste: document.getElementById("e-poste").value.trim(),
+      email: document.getElementById("e-email").value.trim(),
+      gradeId: document.getElementById("e-grade").value,
+      statut: document.getElementById("e-statut").value,
+      embauche: document.getElementById("e-embauche").value
+    };
+    if(!data.nom || !data.gradeId) return;
+    if(id){
+      var idx = state.employees.findIndex(function(x){ return x.id === id; });
+      state.employees[idx] = Object.assign({id:id}, data);
+      toast("Employé mis à jour.");
+    } else {
+      data.id = uid("e");
+      state.employees.push(data);
+      toast("Employé ajouté.");
+    }
+    persist();
+    empOverlay.classList.add("hidden");
+    renderEmployees();
+  });
+
+  function deleteEmployee(id){
+    var e = state.employees.find(function(x){ return x.id === id; });
+    if(!e) return;
+    if(!confirm('Retirer "'+e.nom+'" de la liste des employés ?')) return;
+    state.employees = state.employees.filter(function(x){ return x.id !== id; });
+    persist();
+    renderEmployees();
+    toast("Employé supprimé.");
+  }
+
+  function openGradeManager(){
+    renderGradeManager();
+    document.getElementById("grade-overlay").classList.remove("hidden");
+  }
+
+  function renderGradeManager(){
+    var wrap = document.getElementById("grade-manager");
+    var grades = state.grades.slice().sort(function(a,b){ return (b.niveau||0) - (a.niveau||0); });
+    wrap.innerHTML = grades.map(function(g){
+      var checks = MODULES.map(function(mod){
+        var on = (g.acces||[]).indexOf(mod) !== -1;
+        return '<label class="chk" style="font-size:13px;display:inline-flex;margin:2px 10px 2px 0;">'+
+          '<input type="checkbox" data-grade="'+g.id+'" data-mod="'+encodeURIComponent(mod)+'"'+(on?' checked':'')+'> '+
+          escapeHtml(mod)+'</label>';
+      }).join("");
+      return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+          '<strong style="color:var(--wood-dark)">'+escapeHtml(g.nom)+'</strong>'+
+          '<span class="badge">Niveau '+g.niveau+'</span>'+
+          '<span class="spacer"></span>'+
+          '<button type="button" class="btn small danger" data-grade-del="'+g.id+'">Supprimer</button>'+
+        '</div>'+
+        '<div>'+checks+'</div>'+
+      '</div>';
+    }).join("");
+
+    wrap.querySelectorAll("[data-grade]").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        var g = gradeById(cb.dataset.grade);
+        if(!g) return;
+        var mod = decodeURIComponent(cb.dataset.mod);
+        g.acces = g.acces || [];
+        if(cb.checked){
+          if(g.acces.indexOf(mod) === -1) g.acces.push(mod);
+        } else {
+          g.acces = g.acces.filter(function(x){ return x !== mod; });
+        }
+        persist();
+        renderGradesTable();
+        renderEmployeesTable();
+        renderEmployeesDashboard();
+        toast("Accès mis à jour.");
+      });
+    });
+
+    wrap.querySelectorAll("[data-grade-del]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var g = gradeById(b.dataset.gradeDel);
+        if(!g) return;
+        var n = employeeCountForGrade(g.id);
+        var msg = n > 0
+          ? 'Le grade "'+g.nom+'" est attribué à '+n+' employé(s). Ces employés seront reclassés en "Sans grade". Continuer ?'
+          : 'Supprimer le grade "'+g.nom+'" ?';
+        if(!confirm(msg)) return;
+        state.grades = state.grades.filter(function(x){ return x.id !== g.id; });
+        if(n > 0){
+          var fallback = state.grades.find(function(x){ return x.nom === "Sans grade"; });
+          if(!fallback){
+            fallback = {id:uid("g"), nom:"Sans grade", niveau:1, acces:["Inventaire"]};
+            state.grades.push(fallback);
+          }
+          state.employees.forEach(function(e){ if(e.gradeId === g.id) e.gradeId = fallback.id; });
+        }
+        persist();
+        renderGradeManager();
+        renderEmployees();
+        toast("Grade supprimé.");
+      });
+    });
+  }
+
+  document.getElementById("btn-grade-add").addEventListener("click", function(){
+    var input = document.getElementById("new-grade-nom");
+    var nom = input.value.trim();
+    if(!nom){ toast("Saisissez un nom de grade."); return; }
+    if(state.grades.some(function(g){ return g.nom.toLowerCase() === nom.toLowerCase(); })){
+      toast("Ce grade existe déjà.");
+      return;
+    }
+    var niveau = parseInt(document.getElementById("new-grade-niveau").value, 10) || 2;
+    state.grades.push({id:uid("g"), nom:nom, niveau:niveau, acces:["Inventaire"]});
+    input.value = "";
+    persist();
+    renderGradeManager();
+    renderEmployees();
+    toast("Grade ajouté.");
+  });
+
+  document.getElementById("emp-search").addEventListener("input", renderEmployeesTable);
+  document.getElementById("emp-filter-grade").addEventListener("change", renderEmployeesTable);
+  document.getElementById("emp-filter-status").addEventListener("change", renderEmployeesTable);
+
+  document.getElementById("btn-emp-export").addEventListener("click", function(){
+    var headers = ["Nom","Poste","E-mail","Grade","Niveau","Accès autorisés","Statut","Date d'embauche"];
+    var rows = state.employees.map(function(e){
+      var g = gradeById(e.gradeId);
+      return [e.nom, e.poste, e.email, g?g.nom:"", g?g.niveau:"", g?(g.acces||[]).join(" | "):"", e.statut, e.embauche];
+    });
+    var csv = "\uFEFF" + [headers].concat(rows).map(function(r){
+      return r.map(function(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }).join(";");
+    }).join("\r\n");
+    downloadBlob(csv, "woodworks-employes.csv", "text/csv;charset=utf-8;");
+    toast("Export CSV généré.");
+  });
+
   // ---------- CATEGORIES ----------
   var catOverlay = document.getElementById("cat-overlay");
 
@@ -1262,7 +1727,7 @@
 
   // ---------- SETTINGS ----------
   document.getElementById("btn-export-json").addEventListener("click", function(){
-    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements, categories: state.categories, materials: state.materials, purchases: state.purchases };
+    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements, categories: state.categories, materials: state.materials, purchases: state.purchases, employees: state.employees, grades: state.grades };
     downloadBlob(JSON.stringify(backup, null, 2), "woodworks-sauvegarde.json", "application/json");
     toast("Sauvegarde JSON générée.");
   });
@@ -1278,12 +1743,16 @@
         if(!Array.isArray(data.categories)) data.categories = seedCategories();
         if(!Array.isArray(data.materials)) data.materials = seedMaterials();
         if(!Array.isArray(data.purchases)) data.purchases = seedPurchases();
+        if(!Array.isArray(data.employees)) data.employees = seedEmployees();
+        if(!Array.isArray(data.grades)) data.grades = seedGrades();
         if(!confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) return;
         state.products = data.products;
         state.movements = data.movements;
         state.categories = data.categories;
         state.materials = data.materials;
         state.purchases = data.purchases;
+        state.employees = data.employees;
+        state.grades = data.grades;
         persist();
         refreshFilterOptions();
         renderInventoryTable();
@@ -1291,6 +1760,7 @@
         renderMovementsTable();
         renderDashboard();
         renderSuppliers();
+        renderEmployees();
         toast("Sauvegarde importée avec succès.");
       }catch(err){
         alert("Le fichier sélectionné n'est pas une sauvegarde valide.");
@@ -1307,6 +1777,8 @@
     state.categories = seedCategories();
     state.materials = seedMaterials();
     state.purchases = seedPurchases();
+    state.employees = seedEmployees();
+    state.grades = seedGrades();
     persist();
     refreshFilterOptions();
     renderInventoryTable();
@@ -1314,6 +1786,7 @@
     renderMovementsTable();
     renderDashboard();
     renderSuppliers();
+    renderEmployees();
     toast("Données de démonstration restaurées.");
   });
 
@@ -1325,6 +1798,7 @@
   renderMovementsTable();
   renderDashboard();
   renderSuppliers();
+  renderEmployees();
 
 })();
 </script>
