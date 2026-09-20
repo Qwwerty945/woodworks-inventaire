@@ -146,7 +146,7 @@
   <section id="dashboard" class="tab-content active">
     <div class="stat-grid">
       <div class="stat-card"><div class="label">Références en stock</div><div class="value" id="stat-refs">0</div></div>
-      <div class="stat-card"><div class="label">Valeur totale du stock</div><div class="value" id="stat-value">0 €</div></div>
+      <div class="stat-card"><div class="label">Valeur totale du stock</div><div class="value" id="stat-value">0 $</div></div>
       <div class="stat-card"><div class="label">Mouvements (30 derniers jours)</div><div class="value" id="stat-moves">0</div></div>
       <div class="stat-card alert"><div class="label">Produits en alerte</div><div class="value" id="stat-alerts">0</div></div>
     </div>
@@ -317,7 +317,7 @@
         </select>
       </div>
       <div>
-        <label>Prix unitaire (€)</label>
+        <label>Prix unitaire ($)</label>
         <input type="number" id="p-prix" min="0" step="0.01" required>
       </div>
       <div>
@@ -411,7 +411,7 @@
   }
 
   function fmtMoney(n){
-    return n.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
+    return "$" + n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
   }
   function fmtNum(n){
     return n.toLocaleString("fr-FR",{maximumFractionDigits:2});
@@ -623,7 +623,7 @@
 
   // ---------- CSV EXPORT ----------
   document.getElementById("btn-export-csv").addEventListener("click", function(){
-    var headers = ["Nom","Catégorie","Essence","Dimensions","Quantité","Unité","Prix unitaire (€)","Valeur (€)","Emplacement","Fournisseur","Date d'entrée"];
+    var headers = ["Nom","Catégorie","Essence","Dimensions","Quantité","Unité","Prix unitaire ($)","Valeur ($)","Emplacement","Fournisseur","Date d'entrée"];
     var rows = state.products.map(function(p){
       return [p.nom,p.categorie,p.essence,p.dimensions,p.quantite,p.unite,p.prixUnitaire,(p.quantite*p.prixUnitaire).toFixed(2),p.emplacement,p.fournisseur,p.dateEntree];
     });
