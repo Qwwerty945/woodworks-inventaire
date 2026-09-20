@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woodworks Company — Gestion de stock</title>
+<style>
+  :root{
+    --wood-dark:#3b2417;
+    --wood-medium:#6d4c34;
+    --wood-light:#a9825f;
+    --accent:#d98324;
+    --accent-dark:#b3660f;
+    --bg:#faf5ec;
+    --card:#ffffff;
+    --border:#e4d8c6;
+    --text:#2c1e14;
+    --muted:#7a6a58;
+    --danger:#b23b30;
+    --danger-bg:#fbeceb;
+    --success:#3f7a45;
+    --success-bg:#eaf5ec;
+    --radius:10px;
+    --shadow:0 2px 10px rgba(59,36,23,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header.topbar{
+    background:linear-gradient(135deg,var(--wood-dark),var(--wood-medium));
+    color:#fff;padding:18px 28px;box-shadow:var(--shadow);
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;letter-spacing:.3px;}
+  .brand .logo{font-size:28px;}
+  .brand-sub{font-size:12.5px;color:#e9d9c4;font-weight:400;margin-left:38px;margin-top:-4px;display:block;}
+  nav{display:flex;gap:6px;flex-wrap:wrap;}
+  .tab-btn{
+    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;
+    padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px;transition:.15s;
+  }
+  .tab-btn:hover{background:rgba(255,255,255,0.18);}
+  .tab-btn.active{background:var(--accent);border-color:var(--accent);font-weight:600;}
+  main{max-width:1240px;margin:0 auto;padding:22px 20px 60px;}
+  .tab-content{display:none;}
+  .tab-content.active{display:block;animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:22px;}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);}
+  .stat-card .label{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+  .stat-card .value{font-size:26px;font-weight:700;color:var(--wood-dark);}
+  .stat-card.alert .value{color:var(--danger);}
+
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:22px;}
+  .panel h2{margin:0 0 14px;font-size:17px;color:var(--wood-dark);border-bottom:2px solid var(--border);padding-bottom:8px;}
+  .dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:820px){.dashboard-grid{grid-template-columns:1fr;}}
+
+  .alert-list{list-style:none;margin:0;padding:0;}
+  .alert-list li{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--border);font-size:14px;}
+  .alert-list li:last-child{border-bottom:none;}
+  .alert-list .qty{color:var(--danger);font-weight:700;}
+  .empty-note{color:var(--muted);font-size:14px;padding:8px 0;}
+
+  .bar-row{margin-bottom:12px;}
+  .bar-row .bar-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;color:var(--text);}
+  .bar-track{background:#f0e6d8;border-radius:6px;height:14px;overflow:hidden;}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--wood-medium));border-radius:6px;}
+
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;}
+  .toolbar input[type="text"], .toolbar select{
+    padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:var(--text);
+  }
+  .toolbar label.chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);}
+  .spacer{flex:1;}
+  .btn{
+    background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:.15s;
+  }
+  .btn:hover{background:var(--accent-dark);}
+  .btn.secondary{background:#fff;color:var(--wood-dark);border:1px solid var(--border);}
+  .btn.secondary:hover{background:#f3ead d;background:#f3eadd;}
+  .btn.danger{background:var(--danger);}
+  .btn.danger:hover{background:#8f2e25;}
+  .btn.small{padding:5px 10px;font-size:12.5px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{
+    text-align:left;padding:10px 10px;background:#f4ead9;color:var(--wood-dark);cursor:pointer;user-select:none;
+    border-bottom:2px solid var(--border);white-space:nowrap;
+  }
+  thead th:hover{background:#eddfc7;}
+  tbody td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tbody tr:hover{background:#fbf6ec;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;background:#f0e6d8;color:var(--wood-dark);}
+  .badge.low{background:var(--danger-bg);color:var(--danger);}
+  .actions-cell{display:flex;gap:6px;white-space:nowrap;}
+  .table-wrap{overflow-x:auto;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(30,18,10,0.5);display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:50;
+  }
+  .modal-overlay.hidden{display:none;}
+  .modal{background:#fff;border-radius:var(--radius);padding:22px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.25);}
+  .modal h3{margin-top:0;color:var(--wood-dark);}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-grid .full{grid-column:1/-1;}
+  .form-grid label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;}
+  .form-grid input, .form-grid select{
+    width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;
+  }
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+
+  #toast{
+    position:fixed;bottom:20px;right:20px;background:var(--wood-dark);color:#fff;padding:12px 18px;border-radius:8px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.25);font-size:14px;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:100;
+  }
+  #toast.show{opacity:1;transform:translateY(0);}
+
+  .settings-box p{font-size:14px;color:var(--muted);line-height:1.6;}
+  .settings-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+  .file-input-wrap{position:relative;overflow:hidden;display:inline-block;}
+  .file-input-wrap input[type=file]{position:absolute;left:0;top:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+
+  footer.site-footer{text-align:center;color:var(--muted);font-size:12.5px;padding:20px;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div>
+    <div class="brand"><span class="logo">🪵</span> Woodworks Company</div>
+    <span class="brand-sub">Gestion de stock — Scierie &amp; Négoce du bois</span>
+  </div>
+  <nav>
+    <button class="tab-btn active" data-tab="dashboard">Tableau de bord</button>
+    <button class="tab-btn" data-tab="inventory">Inventaire</button>
+    <button class="tab-btn" data-tab="movements">Mouvements de stock</button>
+    <button class="tab-btn" data-tab="settings">Paramètres</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section id="dashboard" class="tab-content active">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Références en stock</div><div class="value" id="stat-refs">0</div></div>
+      <div class="stat-card"><div class="label">Valeur totale du stock</div><div class="value" id="stat-value">0 €</div></div>
+      <div class="stat-card"><div class="label">Mouvements (30 derniers jours)</div><div class="value" id="stat-moves">0</div></div>
+      <div class="stat-card alert"><div class="label">Produits en alerte</div><div class="value" id="stat-alerts">0</div></div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="panel">
+        <h2>Alertes de stock bas</h2>
+        <ul class="alert-list" id="alert-list"></ul>
+      </div>
+      <div class="panel">
+        <h2>Valeur du stock par catégorie</h2>
+        <div id="chart-category"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Répartition des références par essence de bois</h2>
+      <div id="chart-essence"></div>
+    </div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section id="inventory" class="tab-content">
+    <div class="panel">
+      <h2>Inventaire des produits</h2>
+      <div class="toolbar">
+        <input type="text" id="search-input" placeholder="Rechercher un produit, un fournisseur, un emplacement...">
+        <select id="filter-cat"><option value="">Toutes les catégories</option></select>
+        <select id="filter-ess"><option value="">Toutes les essences</option></select>
+        <label class="chk"><input type="checkbox" id="filter-low"> Stock bas uniquement</label>
+        <div class="spacer"></div>
+        <button class="btn secondary" id="btn-export-csv">Exporter CSV</button>
+        <button class="btn" id="btn-add-product">+ Ajouter un produit</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-key="nom">Produit</th>
+              <th data-key="categorie">Catégorie</th>
+              <th data-key="essence">Essence</th>
+              <th data-key="dimensions">Dimensions</th>
+              <th data-key="quantite">Quantité</th>
+              <th data-key="prixUnitaire">Prix unitaire</th>
+              <th data-key="valeur">Valeur</th>
+              <th data-key="emplacement">Emplacement</th>
+              <th data-key="fournisseur">Fournisseur</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOVEMENTS -->
+  <section id="movements" class="tab-content">
+    <div class="panel">
+      <h2>Enregistrer un mouvement</h2>
+      <form id="movement-form" class="form-grid">
+        <div>
+          <label>Produit</label>
+          <select id="mv-product" required></select>
+        </div>
+        <div>
+          <label>Type de mouvement</label>
+          <select id="mv-type" required>
+            <option value="Entrée">Entrée (réception)</option>
+            <option value="Sortie">Sortie (livraison / vente)</option>
+          </select>
+        </div>
+        <div>
+          <label>Quantité</label>
+          <input type="number" id="mv-qty" min="0.01" step="0.01" required>
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="date" id="mv-date" required>
+        </div>
+        <div class="full">
+          <label>Motif / référence</label>
+          <input type="text" id="mv-motif" placeholder="Ex : Livraison fournisseur, commande client...">
+        </div>
+        <div class="full" style="text-align:right;">
+          <button type="submit" class="btn">Enregistrer le mouvement</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h2>Historique des mouvements</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Motif</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="movements-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settings" class="tab-content">
+    <div class="panel settings-box">
+      <h2>Données &amp; sauvegarde</h2>
+      <p>Toutes les données (produits et mouvements) sont enregistrées localement dans le navigateur utilisé.
+      Pour transférer vos données vers un autre poste, ou en garder une copie de sécurité, utilisez l'export
+      et l'import ci-dessous.</p>
+      <div class="settings-actions">
+        <button class="btn secondary" id="btn-export-json">Exporter toutes les données (JSON)</button>
+        <div class="file-input-wrap btn secondary">
+          Importer une sauvegarde (JSON)
+          <input type="file" id="import-json" accept="application/json">
+        </div>
+        <button class="btn danger" id="btn-reset-demo">Réinitialiser avec les données de démonstration</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Ajouter un produit</h3>
+    <form id="product-form" class="form-grid">
+      <input type="hidden" id="p-id">
+      <div class="full">
+        <label>Nom du produit</label>
+        <input type="text" id="p-nom" required placeholder="Ex : Planche de chêne 27mm">
+      </div>
+      <div>
+        <label>Catégorie</label>
+        <select id="p-categorie" required>
+          <option>Planches</option>
+          <option>Poutres</option>
+          <option>Grumes</option>
+          <option>Bois de chauffage</option>
+          <option>Palettes</option>
+          <option>Panneaux</option>
+          <option>Copeaux/Sciure</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div>
+        <label>Essence de bois</label>
+        <input list="essence-list" id="p-essence" required placeholder="Ex : Chêne">
+        <datalist id="essence-list">
+          <option>Chêne</option><option>Hêtre</option><option>Pin sylvestre</option>
+          <option>Sapin</option><option>Douglas</option><option>Épicéa</option>
+          <option>Frêne</option><option>Châtaignier</option><option>Bouleau</option>
+          <option>Mixte</option><option>Autre</option>
+        </datalist>
+      </div>
+      <div class="full">
+        <label>Dimensions</label>
+        <input type="text" id="p-dimensions" placeholder="Ex : 4000×300×27 mm">
+      </div>
+      <div>
+        <label>Quantité en stock</label>
+        <input type="number" id="p-quantite" min="0" step="0.01" required>
+      </div>
+      <div>
+        <label>Unité</label>
+        <select id="p-unite" required>
+          <option>unités</option><option>m³</option><option>ml</option><option>kg</option><option>stères</option>
+        </select>
+      </div>
+      <div>
+        <label>Prix unitaire (€)</label>
+        <input type="number" id="p-prix" min="0" step="0.01" required>
+      </div>
+      <div>
+        <label>Seuil d'alerte (stock bas)</label>
+        <input type="number" id="p-seuil" min="0" step="0.01" required>
+      </div>
+      <div>
+        <label>Emplacement</label>
+        <input type="text" id="p-emplacement" placeholder="Ex : Hangar A - Rangée 3">
+      </div>
+      <div>
+        <label>Fournisseur</label>
+        <input type="text" id="p-fournisseur" placeholder="Ex : Scierie du Vercors">
+      </div>
+      <div class="full">
+        <label>Date d'entrée en stock</label>
+        <input type="date" id="p-date">
+      </div>
+      <div class="full modal-actions">
+        <button type="button" class="btn secondary" id="btn-cancel-modal">Annuler</button>
+        <button type="submit" class="btn">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<footer class="site-footer">Woodworks Company — Outil interne de gestion de stock</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_PRODUCTS = "ww_products_v1";
+  var STORAGE_MOVEMENTS = "ww_movements_v1";
+
+  var CATEGORIES = ["Planches","Poutres","Grumes","Bois de chauffage","Palettes","Panneaux","Copeaux/Sciure","Autre"];
+
+  function uid(prefix){
+    return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  function seedProducts(){
+    return [
+      {id:"p1", nom:"Planche de chêne 27mm", categorie:"Planches", essence:"Chêne", dimensions:"4000×300×27 mm", quantite:85, unite:"unités", prixUnitaire:42.5, seuilAlerte:20, emplacement:"Hangar A - Rangée 1", fournisseur:"Forêts du Perche", dateEntree:"2026-08-12"},
+      {id:"p2", nom:"Poutre en pin massif", categorie:"Poutres", essence:"Pin sylvestre", dimensions:"3000×150×150 mm", quantite:14, unite:"unités", prixUnitaire:65, seuilAlerte:15, emplacement:"Hangar A - Rangée 4", fournisseur:"Scierie du Vercors", dateEntree:"2026-08-02"},
+      {id:"p3", nom:"Grume de hêtre non écorcée", categorie:"Grumes", essence:"Hêtre", dimensions:"Ø 45-60 cm, L 5 m", quantite:22, unite:"m³", prixUnitaire:95, seuilAlerte:10, emplacement:"Parc à bois extérieur", fournisseur:"Coopérative forestière Ardennes", dateEntree:"2026-07-20"},
+      {id:"p4", nom:"Bûches de chauffage 33cm", categorie:"Bois de chauffage", essence:"Chêne/Charme", dimensions:"33 cm", quantite:8, unite:"stères", prixUnitaire:78, seuilAlerte:15, emplacement:"Hangar B", fournisseur:"Production interne", dateEntree:"2026-09-01"},
+      {id:"p5", nom:"Palette bois standard EPAL", categorie:"Palettes", essence:"Sapin", dimensions:"1200×800 mm", quantite:340, unite:"unités", prixUnitaire:12.9, seuilAlerte:50, emplacement:"Hangar C", fournisseur:"Production interne", dateEntree:"2026-09-10"},
+      {id:"p6", nom:"Panneau contreplaqué 18mm", categorie:"Panneaux", essence:"Bouleau", dimensions:"2500×1250×18 mm", quantite:60, unite:"unités", prixUnitaire:54, seuilAlerte:20, emplacement:"Hangar A - Rangée 6", fournisseur:"BaltiPly", dateEntree:"2026-08-25"},
+      {id:"p7", nom:"Sciure de bois", categorie:"Copeaux/Sciure", essence:"Mixte", dimensions:"-", quantite:1200, unite:"kg", prixUnitaire:0.15, seuilAlerte:300, emplacement:"Silo 1", fournisseur:"Production interne", dateEntree:"2026-09-15"},
+      {id:"p8", nom:"Planche de douglas 27mm", categorie:"Planches", essence:"Douglas", dimensions:"4000×250×27 mm", quantite:18, unite:"unités", prixUnitaire:38, seuilAlerte:25, emplacement:"Hangar A - Rangée 2", fournisseur:"Scierie du Vercors", dateEntree:"2026-08-30"},
+      {id:"p9", nom:"Grume de sapin écorcée", categorie:"Grumes", essence:"Sapin", dimensions:"Ø 30-40 cm, L 6 m", quantite:35, unite:"m³", prixUnitaire:68, seuilAlerte:12, emplacement:"Parc à bois extérieur", fournisseur:"Coopérative forestière Vosges", dateEntree:"2026-09-05"},
+      {id:"p10", nom:"Poutre lamellé-collé", categorie:"Poutres", essence:"Épicéa", dimensions:"5000×200×100 mm", quantite:6, unite:"unités", prixUnitaire:145, seuilAlerte:10, emplacement:"Hangar A - Rangée 5", fournisseur:"LamiBois SAS", dateEntree:"2026-07-15"}
+    ];
+  }
+
+  function seedMovements(){
+    return [
+      {id:uid("m"), produitId:"p2", type:"Sortie", quantite:6, date:"2026-09-18", motif:"Commande client - Dupont Menuiserie"},
+      {id:uid("m"), produitId:"p1", type:"Entrée", quantite:40, date:"2026-09-10", motif:"Livraison fournisseur"},
+      {id:uid("m"), produitId:"p4", type:"Sortie", quantite:12, date:"2026-09-19", motif:"Vente directe dépôt"}
+    ];
+  }
+
+  var state = { products: [], movements: [] };
+
+  function loadState(){
+    try{
+      var p = localStorage.getItem(STORAGE_PRODUCTS);
+      var m = localStorage.getItem(STORAGE_MOVEMENTS);
+      if(p && m){
+        state.products = JSON.parse(p);
+        state.movements = JSON.parse(m);
+      } else {
+        state.products = seedProducts();
+        state.movements = seedMovements();
+        persist();
+      }
+    }catch(e){
+      state.products = seedProducts();
+      state.movements = seedMovements();
+      persist();
+    }
+  }
+
+  function persist(){
+    localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(state.products));
+    localStorage.setItem(STORAGE_MOVEMENTS, JSON.stringify(state.movements));
+  }
+
+  function fmtMoney(n){
+    return n.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
+  }
+  function fmtNum(n){
+    return n.toLocaleString("fr-FR",{maximumFractionDigits:2});
+  }
+
+  var filters = { search:"", cat:"", ess:"", low:false };
+  var sortState = { key:"nom", dir:1 };
+
+  function toast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  // ---------- TABS ----------
+  document.querySelectorAll(".tab-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+      document.querySelectorAll(".tab-content").forEach(function(s){ s.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.tab).classList.add("active");
+      if(btn.dataset.tab === "dashboard") renderDashboard();
+    });
+  });
+
+  // ---------- FILTER DROPDOWNS ----------
+  function refreshFilterOptions(){
+    var catSel = document.getElementById("filter-cat");
+    var essSel = document.getElementById("filter-ess");
+    var currentCat = catSel.value, currentEss = essSel.value;
+    catSel.innerHTML = '<option value="">Toutes les catégories</option>' +
+      CATEGORIES.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join("");
+    var essences = Array.from(new Set(state.products.map(function(p){ return p.essence; }))).sort();
+    essSel.innerHTML = '<option value="">Toutes les essences</option>' +
+      essences.map(function(e){ return '<option value="'+e+'">'+e+'</option>'; }).join("");
+    catSel.value = currentCat; essSel.value = currentEss;
+  }
+
+  // ---------- INVENTORY TABLE ----------
+  function getFilteredSorted(){
+    var q = filters.search.trim().toLowerCase();
+    var list = state.products.filter(function(p){
+      if(filters.cat && p.categorie !== filters.cat) return false;
+      if(filters.ess && p.essence !== filters.ess) return false;
+      if(filters.low && !(p.quantite <= p.seuilAlerte)) return false;
+      if(q){
+        var hay = (p.nom+" "+p.categorie+" "+p.essence+" "+p.emplacement+" "+p.fournisseur).toLowerCase();
+        if(hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    list.sort(function(a,b){
+      var k = sortState.key;
+      var va = k === "valeur" ? a.quantite*a.prixUnitaire : a[k];
+      var vb = k === "valeur" ? b.quantite*b.prixUnitaire : b[k];
+      if(typeof va === "string"){ va = va.toLowerCase(); vb = vb.toLowerCase(); }
+      if(va < vb) return -1*sortState.dir;
+      if(va > vb) return 1*sortState.dir;
+      return 0;
+    });
+    return list;
+  }
+
+  function renderInventoryTable(){
+    var tbody = document.getElementById("inventory-tbody");
+    var list = getFilteredSorted();
+    if(list.length === 0){
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-note">Aucun produit ne correspond à ces critères.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(function(p){
+      var low = p.quantite <= p.seuilAlerte;
+      var valeur = p.quantite * p.prixUnitaire;
+      return '<tr>'+
+        '<td>'+escapeHtml(p.nom)+'</td>'+
+        '<td>'+escapeHtml(p.categorie)+'</td>'+
+        '<td>'+escapeHtml(p.essence)+'</td>'+
+        '<td>'+escapeHtml(p.dimensions||"-")+'</td>'+
+        '<td><span class="badge'+(low?' low':'')+'">'+fmtNum(p.quantite)+' '+escapeHtml(p.unite)+'</span></td>'+
+        '<td>'+fmtMoney(p.prixUnitaire)+'</td>'+
+        '<td>'+fmtMoney(valeur)+'</td>'+
+        '<td>'+escapeHtml(p.emplacement||"-")+'</td>'+
+        '<td>'+escapeHtml(p.fournisseur||"-")+'</td>'+
+        '<td class="actions-cell">'+
+          '<button class="btn small secondary" data-edit="'+p.id+'">Modifier</button>'+
+          '<button class="btn small danger" data-del="'+p.id+'">Supprimer</button>'+
+        '</td>'+
+      '</tr>';
+    }).join("");
+
+    tbody.querySelectorAll("[data-edit]").forEach(function(b){
+      b.addEventListener("click", function(){ openEditModal(b.dataset.edit); });
+    });
+    tbody.querySelectorAll("[data-del]").forEach(function(b){
+      b.addEventListener("click", function(){ deleteProduct(b.dataset.del); });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  document.getElementById("search-input").addEventListener("input", function(e){
+    filters.search = e.target.value; renderInventoryTable();
+  });
+  document.getElementById("filter-cat").addEventListener("change", function(e){
+    filters.cat = e.target.value; renderInventoryTable();
+  });
+  document.getElementById("filter-ess").addEventListener("change", function(e){
+    filters.ess = e.target.value; renderInventoryTable();
+  });
+  document.getElementById("filter-low").addEventListener("change", function(e){
+    filters.low = e.target.checked; renderInventoryTable();
+  });
+  document.querySelectorAll("thead th[data-key]").forEach(function(th){
+    th.addEventListener("click", function(){
+      var key = th.dataset.key;
+      if(sortState.key === key) sortState.dir *= -1;
+      else { sortState.key = key; sortState.dir = 1; }
+      renderInventoryTable();
+    });
+  });
+
+  // ---------- PRODUCT MODAL ----------
+  var overlay = document.getElementById("modal-overlay");
+  var form = document.getElementById("product-form");
+
+  document.getElementById("btn-add-product").addEventListener("click", function(){ openAddModal(); });
+  document.getElementById("btn-cancel-modal").addEventListener("click", function(){ overlay.classList.add("hidden"); });
+  overlay.addEventListener("click", function(e){ if(e.target === overlay) overlay.classList.add("hidden"); });
+
+  function openAddModal(){
+    document.getElementById("modal-title").textContent = "Ajouter un produit";
+    form.reset();
+    document.getElementById("p-id").value = "";
+    document.getElementById("p-date").value = new Date().toISOString().slice(0,10);
+    overlay.classList.remove("hidden");
+  }
+
+  function openEditModal(id){
+    var p = state.products.find(function(x){ return x.id === id; });
+    if(!p) return;
+    document.getElementById("modal-title").textContent = "Modifier le produit";
+    document.getElementById("p-id").value = p.id;
+    document.getElementById("p-nom").value = p.nom;
+    document.getElementById("p-categorie").value = p.categorie;
+    document.getElementById("p-essence").value = p.essence;
+    document.getElementById("p-dimensions").value = p.dimensions || "";
+    document.getElementById("p-quantite").value = p.quantite;
+    document.getElementById("p-unite").value = p.unite;
+    document.getElementById("p-prix").value = p.prixUnitaire;
+    document.getElementById("p-seuil").value = p.seuilAlerte;
+    document.getElementById("p-emplacement").value = p.emplacement || "";
+    document.getElementById("p-fournisseur").value = p.fournisseur || "";
+    document.getElementById("p-date").value = p.dateEntree || "";
+    overlay.classList.remove("hidden");
+  }
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    var id = document.getElementById("p-id").value;
+    var data = {
+      nom: document.getElementById("p-nom").value.trim(),
+      categorie: document.getElementById("p-categorie").value,
+      essence: document.getElementById("p-essence").value.trim(),
+      dimensions: document.getElementById("p-dimensions").value.trim(),
+      quantite: parseFloat(document.getElementById("p-quantite").value) || 0,
+      unite: document.getElementById("p-unite").value,
+      prixUnitaire: parseFloat(document.getElementById("p-prix").value) || 0,
+      seuilAlerte: parseFloat(document.getElementById("p-seuil").value) || 0,
+      emplacement: document.getElementById("p-emplacement").value.trim(),
+      fournisseur: document.getElementById("p-fournisseur").value.trim(),
+      dateEntree: document.getElementById("p-date").value
+    };
+    if(id){
+      var idx = state.products.findIndex(function(x){ return x.id === id; });
+      state.products[idx] = Object.assign({id:id}, data);
+      toast("Produit mis à jour.");
+    } else {
+      data.id = uid("p");
+      state.products.push(data);
+      toast("Produit ajouté.");
+    }
+    persist();
+    overlay.classList.add("hidden");
+    refreshFilterOptions();
+    renderInventoryTable();
+    populateMovementProductSelect();
+    renderDashboard();
+  });
+
+  function deleteProduct(id){
+    var p = state.products.find(function(x){ return x.id === id; });
+    if(!p) return;
+    if(!confirm('Supprimer "'+p.nom+'" de l\'inventaire ? Cette action est irréversible.')) return;
+    state.products = state.products.filter(function(x){ return x.id !== id; });
+    state.movements = state.movements.filter(function(m){ return m.produitId !== id; });
+    persist();
+    refreshFilterOptions();
+    renderInventoryTable();
+    populateMovementProductSelect();
+    renderMovementsTable();
+    renderDashboard();
+    toast("Produit supprimé.");
+  }
+
+  // ---------- CSV EXPORT ----------
+  document.getElementById("btn-export-csv").addEventListener("click", function(){
+    var headers = ["Nom","Catégorie","Essence","Dimensions","Quantité","Unité","Prix unitaire (€)","Valeur (€)","Emplacement","Fournisseur","Date d'entrée"];
+    var rows = state.products.map(function(p){
+      return [p.nom,p.categorie,p.essence,p.dimensions,p.quantite,p.unite,p.prixUnitaire,(p.quantite*p.prixUnitaire).toFixed(2),p.emplacement,p.fournisseur,p.dateEntree];
+    });
+    var csv = "\uFEFF" + [headers].concat(rows).map(function(r){
+      return r.map(function(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }).join(";");
+    }).join("\r\n");
+    downloadBlob(csv, "woodworks-inventaire.csv", "text/csv;charset=utf-8;");
+    toast("Export CSV généré.");
+  });
+
+  function downloadBlob(content, filename, mime){
+    var blob = new Blob([content], {type:mime});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ---------- MOVEMENTS ----------
+  function populateMovementProductSelect(){
+    var sel = document.getElementById("mv-product");
+    var current = sel.value;
+    sel.innerHTML = state.products.map(function(p){
+      return '<option value="'+p.id+'">'+escapeHtml(p.nom)+' ('+fmtNum(p.quantite)+' '+escapeHtml(p.unite)+')</option>';
+    }).join("");
+    if(current) sel.value = current;
+  }
+
+  document.getElementById("mv-date").value = new Date().toISOString().slice(0,10);
+
+  document.getElementById("movement-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var produitId = document.getElementById("mv-product").value;
+    var type = document.getElementById("mv-type").value;
+    var qty = parseFloat(document.getElementById("mv-qty").value);
+    var date = document.getElementById("mv-date").value;
+    var motif = document.getElementById("mv-motif").value.trim();
+    var p = state.products.find(function(x){ return x.id === produitId; });
+    if(!p || !qty || qty <= 0) return;
+
+    if(type === "Sortie" && qty > p.quantite){
+      if(!confirm("La quantité sortie ("+fmtNum(qty)+") dépasse le stock disponible ("+fmtNum(p.quantite)+"). Continuer quand même ?")) return;
+    }
+
+    p.quantite = type === "Entrée" ? p.quantite + qty : p.quantite - qty;
+    if(p.quantite < 0) p.quantite = 0;
+
+    state.movements.unshift({ id: uid("m"), produitId: produitId, type: type, quantite: qty, date: date, motif: motif });
+    persist();
+    this.reset();
+    document.getElementById("mv-date").value = new Date().toISOString().slice(0,10);
+    populateMovementProductSelect();
+    renderMovementsTable();
+    renderInventoryTable();
+    renderDashboard();
+    toast("Mouvement enregistré.");
+  });
+
+  function renderMovementsTable(){
+    var tbody = document.getElementById("movements-tbody");
+    var sorted = state.movements.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    if(sorted.length === 0){
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-note">Aucun mouvement enregistré.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = sorted.map(function(m){
+      var p = state.products.find(function(x){ return x.id === m.produitId; });
+      var nom = p ? p.nom : "(produit supprimé)";
+      var unite = p ? p.unite : "";
+      return '<tr>'+
+        '<td>'+m.date+'</td>'+
+        '<td>'+escapeHtml(nom)+'</td>'+
+        '<td><span class="badge'+(m.type==="Sortie"?" low":"")+'">'+m.type+'</span></td>'+
+        '<td>'+fmtNum(m.quantite)+' '+escapeHtml(unite)+'</td>'+
+        '<td>'+escapeHtml(m.motif||"-")+'</td>'+
+        '<td><button class="btn small danger" data-delmv="'+m.id+'">Supprimer</button></td>'+
+      '</tr>';
+    }).join("");
+    tbody.querySelectorAll("[data-delmv]").forEach(function(b){
+      b.addEventListener("click", function(){ deleteMovement(b.dataset.delmv); });
+    });
+  }
+
+  function deleteMovement(id){
+    var m = state.movements.find(function(x){ return x.id === id; });
+    if(!m) return;
+    if(!confirm("Supprimer ce mouvement ? Le stock du produit sera réajusté en conséquence.")) return;
+    var p = state.products.find(function(x){ return x.id === m.produitId; });
+    if(p){
+      p.quantite = m.type === "Entrée" ? p.quantite - m.quantite : p.quantite + m.quantite;
+      if(p.quantite < 0) p.quantite = 0;
+    }
+    state.movements = state.movements.filter(function(x){ return x.id !== id; });
+    persist();
+    renderMovementsTable();
+    renderInventoryTable();
+    populateMovementProductSelect();
+    renderDashboard();
+    toast("Mouvement supprimé.");
+  }
+
+  // ---------- DASHBOARD ----------
+  function renderDashboard(){
+    var refs = state.products.length;
+    var totalValue = state.products.reduce(function(s,p){ return s + p.quantite*p.prixUnitaire; }, 0);
+    var lowStock = state.products.filter(function(p){ return p.quantite <= p.seuilAlerte; });
+    var thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate()-30);
+    var recentMoves = state.movements.filter(function(m){ return new Date(m.date) >= thirtyDaysAgo; }).length;
+
+    document.getElementById("stat-refs").textContent = refs;
+    document.getElementById("stat-value").textContent = fmtMoney(totalValue);
+    document.getElementById("stat-moves").textContent = recentMoves;
+    document.getElementById("stat-alerts").textContent = lowStock.length;
+
+    var alertList = document.getElementById("alert-list");
+    if(lowStock.length === 0){
+      alertList.innerHTML = '<li class="empty-note">Aucune alerte — tous les stocks sont au-dessus du seuil.</li>';
+    } else {
+      alertList.innerHTML = lowStock.map(function(p){
+        return '<li><span>'+escapeHtml(p.nom)+' <span style="color:var(--muted)">('+escapeHtml(p.categorie)+')</span></span>'+
+          '<span class="qty">'+fmtNum(p.quantite)+' / '+fmtNum(p.seuilAlerte)+' '+escapeHtml(p.unite)+'</span></li>';
+      }).join("");
+    }
+
+    renderBarChart("chart-category", categoryValues());
+    renderBarChart("chart-essence", essenceCounts());
+  }
+
+  function categoryValues(){
+    var map = {};
+    state.products.forEach(function(p){
+      map[p.categorie] = (map[p.categorie]||0) + p.quantite*p.prixUnitaire;
+    });
+    return Object.keys(map).map(function(k){ return {label:k, value:map[k], display: fmtMoney(map[k])}; })
+      .sort(function(a,b){ return b.value-a.value; });
+  }
+
+  function essenceCounts(){
+    var map = {};
+    state.products.forEach(function(p){
+      map[p.essence] = (map[p.essence]||0) + 1;
+    });
+    return Object.keys(map).map(function(k){ return {label:k, value:map[k], display: map[k]+" référence(s)"}; })
+      .sort(function(a,b){ return b.value-a.value; });
+  }
+
+  function renderBarChart(containerId, data){
+    var el = document.getElementById(containerId);
+    if(data.length === 0){ el.innerHTML = '<p class="empty-note">Aucune donnée.</p>'; return; }
+    var max = Math.max.apply(null, data.map(function(d){ return d.value; }));
+    el.innerHTML = data.map(function(d){
+      var pct = max > 0 ? Math.max(3, (d.value/max*100)) : 0;
+      return '<div class="bar-row">'+
+        '<div class="bar-label"><span>'+escapeHtml(d.label)+'</span><span>'+d.display+'</span></div>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>'+
+      '</div>';
+    }).join("");
+  }
+
+  // ---------- SETTINGS ----------
+  document.getElementById("btn-export-json").addEventListener("click", function(){
+    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements };
+    downloadBlob(JSON.stringify(backup, null, 2), "woodworks-sauvegarde.json", "application/json");
+    toast("Sauvegarde JSON générée.");
+  });
+
+  document.getElementById("import-json").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      try{
+        var data = JSON.parse(evt.target.result);
+        if(!data.products || !data.movements) throw new Error("format invalide");
+        if(!confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) return;
+        state.products = data.products;
+        state.movements = data.movements;
+        persist();
+        refreshFilterOptions();
+        renderInventoryTable();
+        populateMovementProductSelect();
+        renderMovementsTable();
+        renderDashboard();
+        toast("Sauvegarde importée avec succès.");
+      }catch(err){
+        alert("Le fichier sélectionné n'est pas une sauvegarde valide.");
+      }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("btn-reset-demo").addEventListener("click", function(){
+    if(!confirm("Cela remplacera toutes les données actuelles par les données de démonstration. Continuer ?")) return;
+    state.products = seedProducts();
+    state.movements = seedMovements();
+    persist();
+    refreshFilterOptions();
+    renderInventoryTable();
+    populateMovementProductSelect();
+    renderMovementsTable();
+    renderDashboard();
+    toast("Données de démonstration restaurées.");
+  });
+
+  // ---------- INIT ----------
+  loadState();
+  refreshFilterOptions();
+  renderInventoryTable();
+  populateMovementProductSelect();
+  renderMovementsTable();
+  renderDashboard();
+
+})();
+</script>
+</body>
+</html>
