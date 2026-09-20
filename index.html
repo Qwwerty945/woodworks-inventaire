@@ -123,6 +123,11 @@
   .file-input-wrap input[type=file]{position:absolute;left:0;top:0;opacity:0;width:100%;height:100%;cursor:pointer;}
 
   footer.site-footer{text-align:center;color:var(--muted);font-size:12.5px;padding:20px;}
+
+  #cat-list li{align-items:center;gap:8px;}
+  #cat-list .cat-name{flex:1;font-weight:600;color:var(--wood-dark);}
+  #cat-list .cat-count{font-size:12px;color:var(--muted);}
+  #cat-list .cat-actions{display:flex;gap:6px;}
 </style>
 </head>
 <body>
@@ -163,8 +168,8 @@
     </div>
 
     <div class="panel">
-      <h2>Répartition des références par essence de bois</h2>
-      <div id="chart-essence"></div>
+      <h2>Répartition des références par catégorie</h2>
+      <div id="chart-cats"></div>
     </div>
   </section>
 
@@ -175,9 +180,9 @@
       <div class="toolbar">
         <input type="text" id="search-input" placeholder="Rechercher un produit, un fournisseur, un emplacement...">
         <select id="filter-cat"><option value="">Toutes les catégories</option></select>
-        <select id="filter-ess"><option value="">Toutes les essences</option></select>
         <label class="chk"><input type="checkbox" id="filter-low"> Stock bas uniquement</label>
         <div class="spacer"></div>
+        <button class="btn secondary" id="btn-manage-cats">Gérer les catégories</button>
         <button class="btn secondary" id="btn-export-csv">Exporter CSV</button>
         <button class="btn" id="btn-add-product">+ Ajouter un produit</button>
       </div>
@@ -187,8 +192,6 @@
             <tr>
               <th data-key="nom">Produit</th>
               <th data-key="categorie">Catégorie</th>
-              <th data-key="essence">Essence</th>
-              <th data-key="dimensions">Dimensions</th>
               <th data-key="quantite">Quantité</th>
               <th data-key="prixUnitaire">Prix unitaire</th>
               <th data-key="valeur">Valeur</th>
@@ -254,7 +257,7 @@
   <section id="settings" class="tab-content">
     <div class="panel settings-box">
       <h2>Données &amp; sauvegarde</h2>
-      <p>Toutes les données (produits et mouvements) sont enregistrées localement dans le navigateur utilisé.
+      <p>Toutes les données (produits, catégories et mouvements) sont enregistrées localement dans le navigateur utilisé.
       Pour transférer vos données vers un autre poste, ou en garder une copie de sécurité, utilisez l'export
       et l'import ci-dessous.</p>
       <div class="settings-actions">
@@ -270,6 +273,23 @@
 
 </main>
 
+<div class="modal-overlay hidden" id="cat-overlay">
+  <div class="modal">
+    <h3>Gérer les catégories</h3>
+    <p style="font-size:13.5px;color:var(--muted);margin-top:0;">
+      Ajoutez, renommez ou supprimez vos catégories. Renommer une catégorie met à jour tous les produits associés.
+    </p>
+    <div class="toolbar" style="margin-bottom:12px;">
+      <input type="text" id="new-cat-input" placeholder="Nouvelle catégorie..." style="flex:1;">
+      <button type="button" class="btn" id="btn-add-cat">+ Ajouter</button>
+    </div>
+    <ul class="alert-list" id="cat-list"></ul>
+    <div class="modal-actions">
+      <button type="button" class="btn secondary" id="btn-cat-close">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay hidden" id="modal-overlay">
   <div class="modal">
     <h3 id="modal-title">Ajouter un produit</h3>
@@ -281,30 +301,8 @@
       </div>
       <div>
         <label>Catégorie</label>
-        <select id="p-categorie" required>
-          <option>Planches</option>
-          <option>Poutres</option>
-          <option>Grumes</option>
-          <option>Bois de chauffage</option>
-          <option>Palettes</option>
-          <option>Panneaux</option>
-          <option>Copeaux/Sciure</option>
-          <option>Autre</option>
-        </select>
-      </div>
-      <div>
-        <label>Essence de bois</label>
-        <input list="essence-list" id="p-essence" required placeholder="Ex : Chêne">
-        <datalist id="essence-list">
-          <option>Chêne</option><option>Hêtre</option><option>Pin sylvestre</option>
-          <option>Sapin</option><option>Douglas</option><option>Épicéa</option>
-          <option>Frêne</option><option>Châtaignier</option><option>Bouleau</option>
-          <option>Mixte</option><option>Autre</option>
-        </datalist>
-      </div>
-      <div class="full">
-        <label>Dimensions</label>
-        <input type="text" id="p-dimensions" placeholder="Ex : 4000×300×27 mm">
+        <input list="categorie-list" id="p-categorie" required placeholder="Ex : Planches">
+        <datalist id="categorie-list"></datalist>
       </div>
       <div>
         <label>Quantité en stock</label>
@@ -354,8 +352,7 @@
 
   var STORAGE_PRODUCTS = "ww_products_v1";
   var STORAGE_MOVEMENTS = "ww_movements_v1";
-
-  var CATEGORIES = ["Planches","Poutres","Grumes","Bois de chauffage","Palettes","Panneaux","Copeaux/Sciure","Autre"];
+  var STORAGE_CATEGORIES = "ww_categories_v1";
 
   function uid(prefix){
     return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -363,17 +360,21 @@
 
   function seedProducts(){
     return [
-      {id:"p1", nom:"Planche de chêne 27mm", categorie:"Planches", essence:"Chêne", dimensions:"4000×300×27 mm", quantite:85, unite:"unités", prixUnitaire:42.5, seuilAlerte:20, emplacement:"Hangar A - Rangée 1", fournisseur:"Forêts du Perche", dateEntree:"2026-08-12"},
-      {id:"p2", nom:"Poutre en pin massif", categorie:"Poutres", essence:"Pin sylvestre", dimensions:"3000×150×150 mm", quantite:14, unite:"unités", prixUnitaire:65, seuilAlerte:15, emplacement:"Hangar A - Rangée 4", fournisseur:"Scierie du Vercors", dateEntree:"2026-08-02"},
-      {id:"p3", nom:"Grume de hêtre non écorcée", categorie:"Grumes", essence:"Hêtre", dimensions:"Ø 45-60 cm, L 5 m", quantite:22, unite:"m³", prixUnitaire:95, seuilAlerte:10, emplacement:"Parc à bois extérieur", fournisseur:"Coopérative forestière Ardennes", dateEntree:"2026-07-20"},
-      {id:"p4", nom:"Bûches de chauffage 33cm", categorie:"Bois de chauffage", essence:"Chêne/Charme", dimensions:"33 cm", quantite:8, unite:"stères", prixUnitaire:78, seuilAlerte:15, emplacement:"Hangar B", fournisseur:"Production interne", dateEntree:"2026-09-01"},
-      {id:"p5", nom:"Palette bois standard EPAL", categorie:"Palettes", essence:"Sapin", dimensions:"1200×800 mm", quantite:340, unite:"unités", prixUnitaire:12.9, seuilAlerte:50, emplacement:"Hangar C", fournisseur:"Production interne", dateEntree:"2026-09-10"},
-      {id:"p6", nom:"Panneau contreplaqué 18mm", categorie:"Panneaux", essence:"Bouleau", dimensions:"2500×1250×18 mm", quantite:60, unite:"unités", prixUnitaire:54, seuilAlerte:20, emplacement:"Hangar A - Rangée 6", fournisseur:"BaltiPly", dateEntree:"2026-08-25"},
-      {id:"p7", nom:"Sciure de bois", categorie:"Copeaux/Sciure", essence:"Mixte", dimensions:"-", quantite:1200, unite:"kg", prixUnitaire:0.15, seuilAlerte:300, emplacement:"Silo 1", fournisseur:"Production interne", dateEntree:"2026-09-15"},
-      {id:"p8", nom:"Planche de douglas 27mm", categorie:"Planches", essence:"Douglas", dimensions:"4000×250×27 mm", quantite:18, unite:"unités", prixUnitaire:38, seuilAlerte:25, emplacement:"Hangar A - Rangée 2", fournisseur:"Scierie du Vercors", dateEntree:"2026-08-30"},
-      {id:"p9", nom:"Grume de sapin écorcée", categorie:"Grumes", essence:"Sapin", dimensions:"Ø 30-40 cm, L 6 m", quantite:35, unite:"m³", prixUnitaire:68, seuilAlerte:12, emplacement:"Parc à bois extérieur", fournisseur:"Coopérative forestière Vosges", dateEntree:"2026-09-05"},
-      {id:"p10", nom:"Poutre lamellé-collé", categorie:"Poutres", essence:"Épicéa", dimensions:"5000×200×100 mm", quantite:6, unite:"unités", prixUnitaire:145, seuilAlerte:10, emplacement:"Hangar A - Rangée 5", fournisseur:"LamiBois SAS", dateEntree:"2026-07-15"}
+      {id:"p1", nom:"Planche de chêne 27mm", categorie:"Planches", quantite:85, unite:"unités", prixUnitaire:42.5, seuilAlerte:20, emplacement:"Hangar A - Rangée 1", fournisseur:"Forêts du Perche", dateEntree:"2026-08-12"},
+      {id:"p2", nom:"Poutre en pin massif", categorie:"Poutres", quantite:14, unite:"unités", prixUnitaire:65, seuilAlerte:15, emplacement:"Hangar A - Rangée 4", fournisseur:"Scierie du Vercors", dateEntree:"2026-08-02"},
+      {id:"p3", nom:"Grume de hêtre non écorcée", categorie:"Grumes", quantite:22, unite:"m³", prixUnitaire:95, seuilAlerte:10, emplacement:"Parc à bois extérieur", fournisseur:"Coopérative forestière Ardennes", dateEntree:"2026-07-20"},
+      {id:"p4", nom:"Bûches de chauffage 33cm", categorie:"Bois de chauffage", quantite:8, unite:"stères", prixUnitaire:78, seuilAlerte:15, emplacement:"Hangar B", fournisseur:"Production interne", dateEntree:"2026-09-01"},
+      {id:"p5", nom:"Palette bois standard EPAL", categorie:"Palettes", quantite:340, unite:"unités", prixUnitaire:12.9, seuilAlerte:50, emplacement:"Hangar C", fournisseur:"Production interne", dateEntree:"2026-09-10"},
+      {id:"p6", nom:"Panneau contreplaqué 18mm", categorie:"Panneaux", quantite:60, unite:"unités", prixUnitaire:54, seuilAlerte:20, emplacement:"Hangar A - Rangée 6", fournisseur:"BaltiPly", dateEntree:"2026-08-25"},
+      {id:"p7", nom:"Sciure de bois", categorie:"Copeaux/Sciure", quantite:1200, unite:"kg", prixUnitaire:0.15, seuilAlerte:300, emplacement:"Silo 1", fournisseur:"Production interne", dateEntree:"2026-09-15"},
+      {id:"p8", nom:"Planche de douglas 27mm", categorie:"Planches", quantite:18, unite:"unités", prixUnitaire:38, seuilAlerte:25, emplacement:"Hangar A - Rangée 2", fournisseur:"Scierie du Vercors", dateEntree:"2026-08-30"},
+      {id:"p9", nom:"Grume de sapin écorcée", categorie:"Grumes", quantite:35, unite:"m³", prixUnitaire:68, seuilAlerte:12, emplacement:"Parc à bois extérieur", fournisseur:"Coopérative forestière Vosges", dateEntree:"2026-09-05"},
+      {id:"p10", nom:"Poutre lamellé-collé", categorie:"Poutres", quantite:6, unite:"unités", prixUnitaire:145, seuilAlerte:10, emplacement:"Hangar A - Rangée 5", fournisseur:"LamiBois SAS", dateEntree:"2026-07-15"}
     ];
+  }
+
+  function seedCategories(){
+    return ["Planches","Poutres","Grumes","Bois de chauffage","Palettes","Panneaux","Copeaux/Sciure","Autre"];
   }
 
   function seedMovements(){
@@ -384,23 +385,27 @@
     ];
   }
 
-  var state = { products: [], movements: [] };
+  var state = { products: [], movements: [], categories: [] };
 
   function loadState(){
     try{
       var p = localStorage.getItem(STORAGE_PRODUCTS);
       var m = localStorage.getItem(STORAGE_MOVEMENTS);
+      var c = localStorage.getItem(STORAGE_CATEGORIES);
       if(p && m){
         state.products = JSON.parse(p);
         state.movements = JSON.parse(m);
+        state.categories = c ? JSON.parse(c) : seedCategories();
       } else {
         state.products = seedProducts();
         state.movements = seedMovements();
+        state.categories = seedCategories();
         persist();
       }
     }catch(e){
       state.products = seedProducts();
       state.movements = seedMovements();
+      state.categories = seedCategories();
       persist();
     }
   }
@@ -408,6 +413,7 @@
   function persist(){
     localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(state.products));
     localStorage.setItem(STORAGE_MOVEMENTS, JSON.stringify(state.movements));
+    localStorage.setItem(STORAGE_CATEGORIES, JSON.stringify(state.categories));
   }
 
   function fmtMoney(n){
@@ -417,7 +423,7 @@
     return n.toLocaleString("fr-FR",{maximumFractionDigits:2});
   }
 
-  var filters = { search:"", cat:"", ess:"", low:false };
+  var filters = { search:"", cat:"", low:false };
   var sortState = { key:"nom", dir:1 };
 
   function toast(msg){
@@ -439,16 +445,21 @@
   });
 
   // ---------- FILTER DROPDOWNS ----------
+  function allCategories(){
+    var set = state.categories.slice();
+    state.products.forEach(function(p){ if(set.indexOf(p.categorie) === -1) set.push(p.categorie); });
+    return set.filter(function(c){ return c && c.trim() !== ""; });
+  }
+
   function refreshFilterOptions(){
     var catSel = document.getElementById("filter-cat");
-    var essSel = document.getElementById("filter-ess");
-    var currentCat = catSel.value, currentEss = essSel.value;
+    var currentCat = catSel.value;
     catSel.innerHTML = '<option value="">Toutes les catégories</option>' +
-      CATEGORIES.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join("");
-    var essences = Array.from(new Set(state.products.map(function(p){ return p.essence; }))).sort();
-    essSel.innerHTML = '<option value="">Toutes les essences</option>' +
-      essences.map(function(e){ return '<option value="'+e+'">'+e+'</option>'; }).join("");
-    catSel.value = currentCat; essSel.value = currentEss;
+      allCategories().map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join("");
+    catSel.value = currentCat;
+
+    var dl = document.getElementById("categorie-list");
+    if(dl) dl.innerHTML = allCategories().map(function(c){ return '<option value="'+c+'">'; }).join("");
   }
 
   // ---------- INVENTORY TABLE ----------
@@ -456,10 +467,9 @@
     var q = filters.search.trim().toLowerCase();
     var list = state.products.filter(function(p){
       if(filters.cat && p.categorie !== filters.cat) return false;
-      if(filters.ess && p.essence !== filters.ess) return false;
       if(filters.low && !(p.quantite <= p.seuilAlerte)) return false;
       if(q){
-        var hay = (p.nom+" "+p.categorie+" "+p.essence+" "+p.emplacement+" "+p.fournisseur).toLowerCase();
+        var hay = (p.nom+" "+p.categorie+" "+p.emplacement+" "+p.fournisseur).toLowerCase();
         if(hay.indexOf(q) === -1) return false;
       }
       return true;
@@ -480,7 +490,7 @@
     var tbody = document.getElementById("inventory-tbody");
     var list = getFilteredSorted();
     if(list.length === 0){
-      tbody.innerHTML = '<tr><td colspan="10" class="empty-note">Aucun produit ne correspond à ces critères.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-note">Aucun produit ne correspond à ces critères.</td></tr>';
       return;
     }
     tbody.innerHTML = list.map(function(p){
@@ -489,8 +499,6 @@
       return '<tr>'+
         '<td>'+escapeHtml(p.nom)+'</td>'+
         '<td>'+escapeHtml(p.categorie)+'</td>'+
-        '<td>'+escapeHtml(p.essence)+'</td>'+
-        '<td>'+escapeHtml(p.dimensions||"-")+'</td>'+
         '<td><span class="badge'+(low?' low':'')+'">'+fmtNum(p.quantite)+' '+escapeHtml(p.unite)+'</span></td>'+
         '<td>'+fmtMoney(p.prixUnitaire)+'</td>'+
         '<td>'+fmtMoney(valeur)+'</td>'+
@@ -522,9 +530,6 @@
   });
   document.getElementById("filter-cat").addEventListener("change", function(e){
     filters.cat = e.target.value; renderInventoryTable();
-  });
-  document.getElementById("filter-ess").addEventListener("change", function(e){
-    filters.ess = e.target.value; renderInventoryTable();
   });
   document.getElementById("filter-low").addEventListener("change", function(e){
     filters.low = e.target.checked; renderInventoryTable();
@@ -561,8 +566,6 @@
     document.getElementById("p-id").value = p.id;
     document.getElementById("p-nom").value = p.nom;
     document.getElementById("p-categorie").value = p.categorie;
-    document.getElementById("p-essence").value = p.essence;
-    document.getElementById("p-dimensions").value = p.dimensions || "";
     document.getElementById("p-quantite").value = p.quantite;
     document.getElementById("p-unite").value = p.unite;
     document.getElementById("p-prix").value = p.prixUnitaire;
@@ -578,9 +581,7 @@
     var id = document.getElementById("p-id").value;
     var data = {
       nom: document.getElementById("p-nom").value.trim(),
-      categorie: document.getElementById("p-categorie").value,
-      essence: document.getElementById("p-essence").value.trim(),
-      dimensions: document.getElementById("p-dimensions").value.trim(),
+      categorie: document.getElementById("p-categorie").value.trim(),
       quantite: parseFloat(document.getElementById("p-quantite").value) || 0,
       unite: document.getElementById("p-unite").value,
       prixUnitaire: parseFloat(document.getElementById("p-prix").value) || 0,
@@ -589,6 +590,9 @@
       fournisseur: document.getElementById("p-fournisseur").value.trim(),
       dateEntree: document.getElementById("p-date").value
     };
+    if(data.categorie && state.categories.indexOf(data.categorie) === -1){
+      state.categories.push(data.categorie);
+    }
     if(id){
       var idx = state.products.findIndex(function(x){ return x.id === id; });
       state.products[idx] = Object.assign({id:id}, data);
@@ -623,9 +627,9 @@
 
   // ---------- CSV EXPORT ----------
   document.getElementById("btn-export-csv").addEventListener("click", function(){
-    var headers = ["Nom","Catégorie","Essence","Dimensions","Quantité","Unité","Prix unitaire ($)","Valeur ($)","Emplacement","Fournisseur","Date d'entrée"];
+    var headers = ["Nom","Catégorie","Quantité","Unité","Prix unitaire ($)","Valeur ($)","Emplacement","Fournisseur","Date d'entrée"];
     var rows = state.products.map(function(p){
-      return [p.nom,p.categorie,p.essence,p.dimensions,p.quantite,p.unite,p.prixUnitaire,(p.quantite*p.prixUnitaire).toFixed(2),p.emplacement,p.fournisseur,p.dateEntree];
+      return [p.nom,p.categorie,p.quantite,p.unite,p.prixUnitaire,(p.quantite*p.prixUnitaire).toFixed(2),p.emplacement,p.fournisseur,p.dateEntree];
     });
     var csv = "\uFEFF" + [headers].concat(rows).map(function(r){
       return r.map(function(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }).join(";");
@@ -750,7 +754,7 @@
     }
 
     renderBarChart("chart-category", categoryValues());
-    renderBarChart("chart-essence", essenceCounts());
+    renderBarChart("chart-cats", catCounts());
   }
 
   function categoryValues(){
@@ -762,10 +766,10 @@
       .sort(function(a,b){ return b.value-a.value; });
   }
 
-  function essenceCounts(){
+  function catCounts(){
     var map = {};
     state.products.forEach(function(p){
-      map[p.essence] = (map[p.essence]||0) + 1;
+      map[p.categorie] = (map[p.categorie]||0) + 1;
     });
     return Object.keys(map).map(function(k){ return {label:k, value:map[k], display: map[k]+" référence(s)"}; })
       .sort(function(a,b){ return b.value-a.value; });
@@ -784,9 +788,114 @@
     }).join("");
   }
 
+  // ---------- CATEGORIES ----------
+  var catOverlay = document.getElementById("cat-overlay");
+
+  document.getElementById("btn-manage-cats").addEventListener("click", function(){
+    renderCategoryList();
+    catOverlay.classList.remove("hidden");
+  });
+  document.getElementById("btn-cat-close").addEventListener("click", function(){
+    catOverlay.classList.add("hidden");
+  });
+  catOverlay.addEventListener("click", function(e){ if(e.target === catOverlay) catOverlay.classList.add("hidden"); });
+
+  function productCountFor(cat){
+    return state.products.filter(function(p){ return p.categorie === cat; }).length;
+  }
+
+  function renderCategoryList(){
+    var ul = document.getElementById("cat-list");
+    var cats = allCategories();
+    if(cats.length === 0){
+      ul.innerHTML = '<li class="empty-note">Aucune catégorie. Ajoutez-en une ci-dessus.</li>';
+      return;
+    }
+    ul.innerHTML = cats.map(function(c){
+      var n = productCountFor(c);
+      return '<li>'+
+        '<span class="cat-name">'+escapeHtml(c)+'</span>'+
+        '<span class="cat-count">'+n+' produit'+(n>1?"s":"")+'</span>'+
+        '<span class="cat-actions">'+
+          '<button class="btn small secondary" data-cat-rename="'+encodeURIComponent(c)+'">Renommer</button>'+
+          '<button class="btn small danger" data-cat-del="'+encodeURIComponent(c)+'">Supprimer</button>'+
+        '</span>'+
+      '</li>';
+    }).join("");
+
+    ul.querySelectorAll("[data-cat-rename]").forEach(function(b){
+      b.addEventListener("click", function(){ renameCategory(decodeURIComponent(b.dataset.catRename)); });
+    });
+    ul.querySelectorAll("[data-cat-del]").forEach(function(b){
+      b.addEventListener("click", function(){ deleteCategory(decodeURIComponent(b.dataset.catDel)); });
+    });
+  }
+
+  function addCategory(){
+    var input = document.getElementById("new-cat-input");
+    var name = input.value.trim();
+    if(!name){ toast("Saisissez un nom de catégorie."); return; }
+    if(allCategories().some(function(c){ return c.toLowerCase() === name.toLowerCase(); })){
+      toast("Cette catégorie existe déjà.");
+      return;
+    }
+    state.categories.push(name);
+    input.value = "";
+    persist();
+    refreshFilterOptions();
+    renderCategoryList();
+    toast("Catégorie ajoutée.");
+  }
+
+  function renameCategory(oldName){
+    var newName = prompt("Nouveau nom pour la catégorie \""+oldName+"\" :", oldName);
+    if(newName === null) return;
+    newName = newName.trim();
+    if(!newName || newName === oldName) return;
+    if(allCategories().some(function(c){ return c.toLowerCase() === newName.toLowerCase(); })){
+      toast("Une catégorie porte déjà ce nom.");
+      return;
+    }
+    state.categories = state.categories.filter(function(c){ return c !== oldName; });
+    state.categories.push(newName);
+    state.products.forEach(function(p){ if(p.categorie === oldName) p.categorie = newName; });
+    if(filters.cat === oldName) filters.cat = newName;
+    persist();
+    refreshFilterOptions();
+    renderInventoryTable();
+    renderCategoryList();
+    renderDashboard();
+    toast("Catégorie renommée.");
+  }
+
+  function deleteCategory(name){
+    var n = productCountFor(name);
+    var msg = n > 0
+      ? "La catégorie \""+name+"\" est utilisée par "+n+" produit(s). Les produits concernés seront reclassés en \"Non classé\". Continuer ?"
+      : "Supprimer la catégorie \""+name+"\" ?";
+    if(!confirm(msg)) return;
+    state.categories = state.categories.filter(function(c){ return c !== name; });
+    if(n > 0){
+      if(allCategories().indexOf("Non classé") === -1){ state.categories.push("Non classé"); }
+      state.products.forEach(function(p){ if(p.categorie === name) p.categorie = "Non classé"; });
+    }
+    if(filters.cat === name) filters.cat = "";
+    persist();
+    refreshFilterOptions();
+    renderInventoryTable();
+    renderCategoryList();
+    renderDashboard();
+    toast("Catégorie supprimée.");
+  }
+
+  document.getElementById("btn-add-cat").addEventListener("click", addCategory);
+  document.getElementById("new-cat-input").addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); addCategory(); }
+  });
+
   // ---------- SETTINGS ----------
   document.getElementById("btn-export-json").addEventListener("click", function(){
-    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements };
+    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements, categories: state.categories };
     downloadBlob(JSON.stringify(backup, null, 2), "woodworks-sauvegarde.json", "application/json");
     toast("Sauvegarde JSON générée.");
   });
@@ -799,9 +908,11 @@
       try{
         var data = JSON.parse(evt.target.result);
         if(!data.products || !data.movements) throw new Error("format invalide");
+        if(!Array.isArray(data.categories)) data.categories = seedCategories();
         if(!confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) return;
         state.products = data.products;
         state.movements = data.movements;
+        state.categories = data.categories;
         persist();
         refreshFilterOptions();
         renderInventoryTable();
@@ -821,6 +932,7 @@
     if(!confirm("Cela remplacera toutes les données actuelles par les données de démonstration. Continuer ?")) return;
     state.products = seedProducts();
     state.movements = seedMovements();
+    state.categories = seedCategories();
     persist();
     refreshFilterOptions();
     renderInventoryTable();
