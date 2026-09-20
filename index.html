@@ -137,12 +137,18 @@
     <div class="brand"><span class="logo">🪵</span> Woodworks Company</div>
     <span class="brand-sub">Gestion de stock — Scierie &amp; Négoce du bois</span>
   </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span id="session-label" style="font-size:12.5px;color:#e9d9c4;display:none;"></span>
+    <button class="btn secondary" id="btn-login-open" style="font-size:13px;">Espace employé</button>
+    <button class="btn secondary" id="btn-logout" style="font-size:13px;display:none;">Déconnexion</button>
+  </div>
   <nav>
     <button class="tab-btn active" data-tab="dashboard">Tableau de bord</button>
     <button class="tab-btn" data-tab="inventory">Inventaire</button>
     <button class="tab-btn" data-tab="movements">Mouvements de stock</button>
     <button class="tab-btn" data-tab="suppliers">Fournisseurs</button>
     <button class="tab-btn" data-tab="employees">Employés</button>
+    <button class="tab-btn" data-tab="timelog">Pointage</button>
     <button class="tab-btn" data-tab="settings">Paramètres</button>
   </nav>
 </header>
@@ -236,6 +242,9 @@
           <label>Motif / référence</label>
           <input type="text" id="mv-motif" placeholder="Ex : Livraison fournisseur, commande client...">
         </div>
+        <div class="full">
+          <div id="mv-author" style="font-size:12.5px;color:var(--muted);padding:8px 10px;border:1px dashed var(--border);border-radius:7px;background:#fdfaf4;"></div>
+        </div>
         <div class="full" style="text-align:right;">
           <button type="submit" class="btn">Enregistrer le mouvement</button>
         </div>
@@ -247,7 +256,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Motif</th><th>Actions</th></tr>
+            <tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Motif</th><th>Enregistré par</th><th>Actions</th></tr>
           </thead>
           <tbody id="movements-tbody"></tbody>
         </table>
@@ -385,8 +394,9 @@
               <th>Nom</th>
               <th>Poste</th>
               <th>Grade</th>
-              <th>Niveau d'accès</th>
+              <th>Niveau</th>
               <th>Accès autorisés</th>
+              <th>Identifiant</th>
               <th>Statut</th>
               <th>Actions</th>
             </tr>
@@ -397,11 +407,54 @@
     </div>
   </section>
 
+  <!-- TIMELOG / POINTAGE -->
+  <section id="timelog" class="tab-content">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="label">Employés sur place</div><div class="value" id="tl-stat-present">0</div></div>
+      <div class="stat-card"><div class="label">Services aujourd'hui</div><div class="value" id="tl-stat-today">0</div></div>
+      <div class="stat-card"><div class="label">Heures cumulées (jour)</div><div class="value" id="tl-stat-hours">0 h</div></div>
+      <div class="stat-card"><div class="label">Services non clôturés</div><div class="value" id="tl-stat-open">0</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Prise / fin de service</h2>
+      <div class="toolbar">
+        <select id="tl-employee"></select>
+        <input type="date" id="tl-date">
+        <div class="spacer"></div>
+        <button class="btn" id="btn-tl-start">Prendre le service</button>
+        <button class="btn secondary" id="btn-tl-end">Terminer le service</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:0;">
+        Enregistrez l'arrivée puis le départ. Un service clôturé affiche automatiquement la durée travaillée.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2>Historique journalier des services</h2>
+      <div class="toolbar">
+        <select id="tl-filter-emp"><option value="">Tous les employés</option></select>
+        <input type="date" id="tl-filter-date">
+        <button class="btn secondary" id="btn-tl-clear">Tout afficher</button>
+        <div class="spacer"></div>
+        <button class="btn secondary" id="btn-tl-export">Exporter CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Employé</th><th>Grade</th><th>Prise</th><th>Fin</th><th>Durée</th><th>Statut</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="tl-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- SETTINGS -->
   <section id="settings" class="tab-content">
     <div class="panel settings-box">
       <h2>Données &amp; sauvegarde</h2>
-      <p>Toutes les données (produits, catégories, mouvements, matières premières, achats, employés et grades) sont enregistrées localement dans le navigateur utilisé.
+      <p>Toutes les données (produits, catégories, mouvements, matières premières, achats, employés, grades, pointages et identifiants) sont enregistrées localement dans le navigateur utilisé.
       Pour transférer vos données vers un autre poste, ou en garder une copie de sécurité, utilisez l'export
       et l'import ci-dessous.</p>
       <div class="settings-actions">
@@ -416,6 +469,47 @@
   </section>
 
 </main>
+
+<div class="modal-overlay hidden" id="login-overlay">
+  <div class="modal" style="max-width:420px;">
+    <h3>Espace employé</h3>
+    <p style="font-size:13.5px;color:var(--muted);margin-top:0;">
+      Connectez-vous avec votre identifiant et votre mot de passe pour accéder à votre fiche.
+    </p>
+    <form id="login-form">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;">Identifiant</label>
+        <input type="text" id="login-user" required autocomplete="username" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;">Mot de passe</label>
+        <input type="password" id="login-pass" required autocomplete="current-password" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;">
+      </div>
+      <div id="login-error" style="color:var(--danger);font-size:13px;min-height:18px;margin-bottom:6px;"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="btn-login-cancel">Annuler</button>
+        <button type="submit" class="btn">Se connecter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="session-overlay">
+  <div class="modal">
+    <h3>Ma fiche employé</h3>
+    <div style="background:#fdfaf4;border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div id="session-name" style="font-size:18px;font-weight:700;color:var(--wood-dark);"></div>
+      <div id="session-role" style="font-size:13px;color:var(--muted);margin-bottom:10px;"></div>
+      <div id="session-info"></div>
+    </div>
+    <h3 style="font-size:15px;">Mes services</h3>
+    <div id="session-shift" style="background:#fdfaf4;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;"></div>
+    <div id="session-history"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn secondary" id="btn-session-close">Fermer</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay hidden" id="emp-overlay">
   <div class="modal">
@@ -448,6 +542,14 @@
       <div>
         <label>Date d'embauche</label>
         <input type="date" id="e-embauche">
+      </div>
+      <div class="full">
+        <label>Identifiant de connexion</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="e-username" readonly style="flex:1;background:#f7f2e9;color:var(--wood-dark);font-family:monospace;">
+          <button type="button" class="btn secondary" id="btn-generate-cred">Générer un mot de passe</button>
+        </div>
+        <div id="e-password-box" style="margin-top:6px;font-size:13px;color:var(--muted);"></div>
       </div>
       <div class="full">
         <label>Accès accordés par ce grade</label>
@@ -570,6 +672,8 @@
   var STORAGE_PURCHASES = "ww_purchases_v1";
   var STORAGE_EMPLOYEES = "ww_employees_v1";
   var STORAGE_GRADES = "ww_grades_v1";
+  var STORAGE_SHIFTS = "ww_shifts_v1";
+  var STORAGE_CREDS = "ww_credentials_v1";
 
   function uid(prefix){
     return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -604,6 +708,43 @@
       {id:"e8", nom:"Thierry Gauthier", poste:"Commercial bois", gradeId:"g7", statut:"Actif", embauche:"2017-06-19", email:"t.gauthier@woodworks.example"},
       {id:"e9", nom:"Camille Perrin", poste:"Comptable", gradeId:"g8", statut:"Actif", embauche:"2023-04-03", email:"c.perrin@woodworks.example"},
       {id:"e10", nom:"Hugo Bertrand", poste:"Apprenti sciage", gradeId:"g9", statut:"Inactif", embauche:"2025-09-01", email:"h.bertrand@woodworks.example"}
+    ];
+  }
+
+  function makePassword(){
+    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    var p = "";
+    for(var i=0;i<4;i++) p += chars.charAt(Math.floor(Math.random()*chars.length));
+    p += "-";
+    for(var j=0;j<4;j++) p += chars.charAt(Math.floor(Math.random()*chars.length));
+    return p;
+  }
+
+  function makeUsername(nom, existing){
+    var base = (nom||"employe").toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+      .replace(/[^a-z0-9]+/g,".").replace(/^\.|\.$/g,"");
+    var user = base;
+    var n = 1;
+    while(existing.indexOf(user) !== -1){ user = base + (++n); }
+    return user;
+  }
+
+  function seedCredentials(employees){
+    var existing = [];
+    return (employees||seedEmployees()).map(function(e){
+      var u = makeUsername(e.nom, existing);
+      existing.push(u);
+      return { employeeId: e.id, username: u, password: makePassword() };
+    });
+  }
+
+  function seedShifts(){
+    return [
+      {id:uid("sh"), employeeId:"e4", date:"2026-09-19", debut:"07:00", fin:"16:30"},
+      {id:uid("sh"), employeeId:"e5", date:"2026-09-19", debut:"07:05", fin:"15:45"},
+      {id:uid("sh"), employeeId:"e6", date:"2026-09-18", debut:"08:00", fin:""},
+      {id:uid("sh"), employeeId:"e7", date:"2026-09-18", debut:"06:45", fin:"14:00"}
     ];
   }
 
@@ -652,13 +793,13 @@
 
   function seedMovements(){
     return [
-      {id:uid("m"), produitId:"p2", type:"Sortie", quantite:6, date:"2026-09-18", motif:"Commande client - Dupont Menuiserie"},
-      {id:uid("m"), produitId:"p1", type:"Entrée", quantite:40, date:"2026-09-10", motif:"Livraison fournisseur"},
-      {id:uid("m"), produitId:"p4", type:"Sortie", quantite:12, date:"2026-09-19", motif:"Vente directe dépôt"}
+      {id:uid("m"), produitId:"p2", type:"Sortie", quantite:6, date:"2026-09-18", motif:"Commande client - Dupont Menuiserie", auteur:"Karim Bouzid"},
+      {id:uid("m"), produitId:"p1", type:"Entrée", quantite:40, date:"2026-09-10", motif:"Livraison fournisseur", auteur:"Nadia Otmani"},
+      {id:uid("m"), produitId:"p4", type:"Sortie", quantite:12, date:"2026-09-19", motif:"Vente directe dépôt", auteur:"Thierry Gauthier"}
     ];
   }
 
-  var state = { products: [], movements: [], categories: [], materials: [], purchases: [], employees: [], grades: [] };
+  var state = { products: [], movements: [], categories: [], materials: [], purchases: [], employees: [], grades: [], shifts: [], credentials: [], session: null };
 
   function loadState(){
     try{
@@ -669,6 +810,8 @@
       var pur = localStorage.getItem(STORAGE_PURCHASES);
       var emp = localStorage.getItem(STORAGE_EMPLOYEES);
       var grd = localStorage.getItem(STORAGE_GRADES);
+      var shf = localStorage.getItem(STORAGE_SHIFTS);
+      var crd = localStorage.getItem(STORAGE_CREDS);
       if(p && m){
         state.products = JSON.parse(p);
         state.movements = JSON.parse(m);
@@ -677,6 +820,8 @@
         state.purchases = pur ? JSON.parse(pur) : seedPurchases();
         state.employees = emp ? JSON.parse(emp) : seedEmployees();
         state.grades = grd ? JSON.parse(grd) : seedGrades();
+        state.credentials = crd ? JSON.parse(crd) : seedCredentials(state.employees);
+        state.shifts = shf ? JSON.parse(shf) : seedShifts();
       } else {
         state.products = seedProducts();
         state.movements = seedMovements();
@@ -685,6 +830,8 @@
         state.purchases = seedPurchases();
         state.employees = seedEmployees();
         state.grades = seedGrades();
+        state.credentials = seedCredentials(state.employees);
+        state.shifts = seedShifts();
         persist();
       }
     }catch(e){
@@ -695,6 +842,8 @@
       state.purchases = seedPurchases();
       state.employees = seedEmployees();
       state.grades = seedGrades();
+      state.credentials = seedCredentials(state.employees);
+      state.shifts = seedShifts();
       persist();
     }
   }
@@ -707,6 +856,8 @@
     localStorage.setItem(STORAGE_PURCHASES, JSON.stringify(state.purchases));
     localStorage.setItem(STORAGE_EMPLOYEES, JSON.stringify(state.employees));
     localStorage.setItem(STORAGE_GRADES, JSON.stringify(state.grades));
+    localStorage.setItem(STORAGE_SHIFTS, JSON.stringify(state.shifts));
+    localStorage.setItem(STORAGE_CREDS, JSON.stringify(state.credentials));
   }
 
   function fmtMoney(n){
@@ -724,6 +875,27 @@
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  // ---------- AUTEUR DES MOUVEMENTS ----------
+  function currentActorName(){
+    if(state.session && state.session.employeeId){
+      var e = employeeById(state.session.employeeId);
+      if(e) return e.nom;
+    }
+    return "Non renseigné";
+  }
+
+  function updateMovementAuthor(){
+    var box = document.getElementById("mv-author");
+    if(!box) return;
+    var s = state.session;
+    if(s && s.employeeId){
+      var e = employeeById(s.employeeId);
+      box.innerHTML = "Ce mouvement sera enregistré au nom de <strong style=\"color:var(--wood-dark)\">"+escapeHtml(e?e.nom:"—")+"</strong>.";
+    } else {
+      box.innerHTML = "Aucun employé connecté — le mouvement sera marqué \"Non renseigné\". Utilisez <strong>Espace employé</strong> pour vous identifier.";
+    }
   }
 
   // ---------- TABS ----------
@@ -969,7 +1141,7 @@
     p.quantite = type === "Entrée" ? p.quantite + qty : p.quantite - qty;
     if(p.quantite < 0) p.quantite = 0;
 
-    state.movements.unshift({ id: uid("m"), produitId: produitId, type: type, quantite: qty, date: date, motif: motif });
+    state.movements.unshift({ id: uid("m"), produitId: produitId, type: type, quantite: qty, date: date, motif: motif, auteur: currentActorName() });
     persist();
     this.reset();
     document.getElementById("mv-date").value = new Date().toISOString().slice(0,10);
@@ -977,6 +1149,7 @@
     renderMovementsTable();
     renderInventoryTable();
     renderDashboard();
+    updateMovementAuthor();
     toast("Mouvement enregistré.");
   });
 
@@ -984,7 +1157,7 @@
     var tbody = document.getElementById("movements-tbody");
     var sorted = state.movements.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
     if(sorted.length === 0){
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-note">Aucun mouvement enregistré.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-note">Aucun mouvement enregistré.</td></tr>';
       return;
     }
     tbody.innerHTML = sorted.map(function(m){
@@ -997,6 +1170,7 @@
         '<td><span class="badge'+(m.type==="Sortie"?" low":"")+'">'+m.type+'</span></td>'+
         '<td>'+fmtNum(m.quantite)+' '+escapeHtml(unite)+'</td>'+
         '<td>'+escapeHtml(m.motif||"-")+'</td>'+
+        '<td>'+escapeHtml(m.auteur||"Non renseigné")+'</td>'+
         '<td><button class="btn small danger" data-delmv="'+m.id+'">Supprimer</button></td>'+
       '</tr>';
     }).join("");
@@ -1081,251 +1255,289 @@
     }).join("");
   }
 
-  // ---------- SUPPLIERS / MATIÈRES PREMIÈRES ----------
-  function materialById(id){
-    return state.materials.find(function(m){ return m.id === id; });
+  // ---------- POINTAGE (PRISE / FIN DE SERVICE) ----------
+  function employeeById(id){
+    return state.employees.find(function(e){ return e.id === id; });
   }
 
-  function spendForMaterial(id){
-    return state.purchases
-      .filter(function(p){ return p.materialId === id; })
-      .reduce(function(s,p){ return s + p.montant; }, 0);
+  function shiftDurationMinutes(s){
+    if(!s || !s.debut || !s.fin) return null;
+    var d1 = s.debut.split(":"), d2 = s.fin.split(":");
+    var m1 = parseInt(d1[0],10)*60 + parseInt(d1[1],10);
+    var m2 = parseInt(d2[0],10)*60 + parseInt(d2[1],10);
+    if(m2 < m1) m2 += 24*60; // service de nuit
+    return m2 - m1;
   }
 
-  function populateMaterialSelect(){
-    var sel = document.getElementById("pu-material");
-    var current = sel.value;
-    sel.innerHTML = state.materials.map(function(m){
-      return '<option value="'+m.id+'">'+escapeHtml(m.nom)+'</option>';
-    }).join("");
-    if(current) sel.value = current;
+  function fmtDuration(min){
+    if(min === null || min === undefined) return "—";
+    var h = Math.floor(min/60), m = min % 60;
+    return h + " h " + (m<10?"0":"") + m;
   }
 
-  function populateSupplierFilter(){
-    var sel = document.getElementById("sup-filter");
-    var current = sel.value;
-    sel.innerHTML = '<option value="">Toutes les matières</option>' +
-      state.materials.map(function(m){ return '<option value="'+m.id+'">'+escapeHtml(m.nom)+'</option>'; }).join("");
-    sel.value = current;
+  function nowHM(){
+    var d = new Date();
+    return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
   }
 
-  function renderSuppliersTable(){
-    var tbody = document.getElementById("sup-tbody");
-    var q = document.getElementById("sup-search").value.trim().toLowerCase();
-    var matFilter = document.getElementById("sup-filter").value;
+  function todayISO(){
+    return new Date().toISOString().slice(0,10);
+  }
 
-    var list = state.materials.filter(function(m){
-      if(matFilter && m.id !== matFilter) return false;
-      if(q){
-        var hay = (m.nom+" "+m.type+" "+m.fournisseur).toLowerCase();
-        if(hay.indexOf(q) === -1) return false;
-      }
+  function fullName(id){
+    var e = employeeById(id);
+    return e ? e.nom : "(employé supprimé)";
+  }
+
+  function populateShiftEmployeeSelects(){
+    var a = document.getElementById("tl-employee");
+    var b = document.getElementById("tl-filter-emp");
+    var ca = a.value, cb = b.value;
+    var actifs = state.employees.filter(function(e){ return e.statut === "Actif"; });
+    a.innerHTML = actifs.map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.nom)+'</option>'; }).join("");
+    b.innerHTML = '<option value="">Tous les employés</option>' +
+      state.employees.map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.nom)+'</option>'; }).join("");
+    if(ca) a.value = ca;
+    if(cb) b.value = cb;
+  }
+
+  function renderShiftsTable(){
+    var tbody = document.getElementById("tl-tbody");
+    var empF = document.getElementById("tl-filter-emp").value;
+    var dateF = document.getElementById("tl-filter-date").value;
+
+    var list = state.shifts.filter(function(s){
+      if(empF && s.employeeId !== empF) return false;
+      if(dateF && s.date !== dateF) return false;
       return true;
+    });
+    list.sort(function(a,b){
+      if(a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return (a.debut||"") < (b.debut||"") ? 1 : -1;
     });
 
     if(list.length === 0){
-      tbody.innerHTML = '<tr><td colspan="8" class="empty-note">Aucune matière première ne correspond à ces critères.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-note">Aucun service enregistré pour ces critères.</td></tr>';
       return;
     }
 
-    tbody.innerHTML = list.map(function(m){
-      var spent = spendForMaterial(m.id);
+    tbody.innerHTML = list.map(function(s){
+      var e = employeeById(s.employeeId);
+      var g = e ? gradeById(e.gradeId) : null;
+      var min = shiftDurationMinutes(s);
+      var ouvert = !s.fin;
       return '<tr>'+
-        '<td>'+escapeHtml(m.nom)+'</td>'+
-        '<td>'+escapeHtml(m.type||"-")+'</td>'+
-        '<td>'+escapeHtml(m.unite||"-")+'</td>'+
-        '<td>'+escapeHtml(m.fournisseur||"-")+'</td>'+
-        '<td>'+fmtMoney(m.prixUnitaire||0)+'</td>'+
-        '<td>'+fmtNum(m.stock||0)+' '+escapeHtml(m.unite||"")+'</td>'+
-        '<td>'+fmtMoney(spent)+'</td>'+
-        '<td class="actions-cell">'+
-          '<button class="btn small secondary" data-mat-edit="'+m.id+'">Modifier</button>'+
-          '<button class="btn small danger" data-mat-del="'+m.id+'">Supprimer</button>'+
-        '</td>'+
+        '<td>'+s.date+'</td>'+
+        '<td>'+escapeHtml(fullName(s.employeeId))+'</td>'+
+        '<td>'+escapeHtml(g?g.nom:"—")+'</td>'+
+        '<td>'+escapeHtml(s.debut||"—")+'</td>'+
+        '<td>'+escapeHtml(s.fin||"—")+'</td>'+
+        '<td>'+fmtDuration(min)+'</td>'+
+        '<td><span class="badge'+(ouvert?' low':'')+'">'+(ouvert?"En service":"Terminé")+'</span></td>'+
+        '<td><button class="btn small danger" data-sh-del="'+s.id+'">Supprimer</button></td>'+
       '</tr>';
     }).join("");
 
-    tbody.querySelectorAll("[data-mat-edit]").forEach(function(b){
-      b.addEventListener("click", function(){ openMaterialModal(b.dataset.matEdit); });
-    });
-    tbody.querySelectorAll("[data-mat-del]").forEach(function(b){
-      b.addEventListener("click", function(){ deleteMaterial(b.dataset.matDel); });
+    tbody.querySelectorAll("[data-sh-del]").forEach(function(b){
+      b.addEventListener("click", function(){ deleteShift(b.dataset.shDel); });
     });
   }
 
-  function renderPurchasesTable(){
-    var tbody = document.getElementById("purchases-tbody");
-    var sorted = state.purchases.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
-    if(sorted.length === 0){
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-note">Aucun achat enregistré.</td></tr>';
+  function renderTimelogDashboard(){
+    var today = todayISO();
+    var todays = state.shifts.filter(function(s){ return s.date === today; });
+    document.getElementById("tl-stat-today").textContent = todays.length;
+    document.getElementById("tl-stat-open").textContent = state.shifts.filter(function(s){ return !s.fin; }).length;
+
+    var present = {};
+    state.shifts.filter(function(s){ return !s.fin; }).forEach(function(s){ present[s.employeeId] = 1; });
+    document.getElementById("tl-stat-present").textContent = Object.keys(present).length;
+
+    var totalMin = todays.reduce(function(acc,s){
+      var m = shiftDurationMinutes(s) || 0; return acc + m;
+    }, 0);
+    var h = Math.floor(totalMin/60), m = totalMin % 60;
+    document.getElementById("tl-stat-hours").textContent = h + " h " + (m<10?"0":"") + m;
+  }
+
+  function renderTimelog(){
+    populateShiftEmployeeSelects();
+    renderShiftsTable();
+    renderTimelogDashboard();
+  }
+
+  document.getElementById("tl-date").value = todayISO();
+
+  document.getElementById("btn-tl-start").addEventListener("click", function(){
+    var empId = document.getElementById("tl-employee").value;
+    var date = document.getElementById("tl-date").value || todayISO();
+    if(!empId){ toast("Sélectionnez un employé."); return; }
+    var dejaOuvert = state.shifts.find(function(s){ return s.employeeId === empId && !s.fin; });
+    if(dejaOuvert){
+      toast("Ce service est déjà ouvert (début " + dejaOuvert.debut + ").");
       return;
     }
-    tbody.innerHTML = sorted.map(function(p){
-      var m = materialById(p.materialId);
-      var nom = m ? m.nom : "(matière supprimée)";
-      var unite = m ? m.unite : "";
-      return '<tr>'+
-        '<td>'+p.date+'</td>'+
-        '<td>'+escapeHtml(nom)+'</td>'+
-        '<td>'+escapeHtml(p.fournisseur||"-")+'</td>'+
-        '<td>'+fmtNum(p.quantite)+' '+escapeHtml(unite)+'</td>'+
-        '<td>'+fmtMoney(p.montant)+'</td>'+
-        '<td>'+escapeHtml(p.reference||"-")+'</td>'+
-        '<td><button class="btn small danger" data-pur-del="'+p.id+'">Supprimer</button></td>'+
-      '</tr>';
-    }).join("");
-
-    tbody.querySelectorAll("[data-pur-del]").forEach(function(b){
-      b.addEventListener("click", function(){ deletePurchase(b.dataset.purDel); });
-    });
-  }
-
-  function renderSuppliersDashboard(){
-    document.getElementById("sup-stat-refs").textContent = state.materials.length;
-
-    var now = new Date();
-    var ym = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
-    var monthTotal = state.purchases
-      .filter(function(p){ return (p.date||"").slice(0,7) === ym; })
-      .reduce(function(s,p){ return s + p.montant; }, 0);
-    document.getElementById("sup-stat-month").textContent = fmtMoney(monthTotal);
-
-    var total = state.purchases.reduce(function(s,p){ return s + p.montant; }, 0);
-    document.getElementById("sup-stat-total").textContent = fmtMoney(total);
-
-    var supSet = {};
-    state.purchases.forEach(function(p){ if(p.fournisseur) supSet[p.fournisseur] = 1; });
-    var names = Object.keys(supSet);
-    document.getElementById("sup-stat-suppliers").textContent = names.length;
-  }
-
-  function renderSuppliers(){
-    renderSuppliersTable();
-    renderPurchasesTable();
-    renderSuppliersDashboard();
-    populateMaterialSelect();
-    populateSupplierFilter();
-  }
-
-  function openMaterialModal(id){
-    var m = id ? materialById(id) : null;
-    var nom = prompt("Nom de la matière première :", m ? m.nom : "");
-    if(nom === null) return;
-    nom = nom.trim();
-    if(!nom) return;
-
-    var type = prompt("Type (Bois brut, Bois débité, Consommable, Pièce d'usure, Énergie...) :", m ? (m.type||"") : "Bois brut");
-    if(type === null) return;
-
-    var unite = prompt("Unité d'achat (m³, unités, kg, L...) :", m ? (m.unite||"") : "m³");
-    if(unite === null) return;
-
-    var fournisseur = prompt("Fournisseur principal :", m ? (m.fournisseur||"") : "");
-    if(fournisseur === null) return;
-
-    var prixStr = prompt("Prix unitaire ($) :", m ? String(m.prixUnitaire||0) : "0");
-    if(prixStr === null) return;
-    var prix = parseFloat(prixStr) || 0;
-
-    var stockStr = prompt("Stock actuel :", m ? String(m.stock||0) : "0");
-    if(stockStr === null) return;
-    var stock = parseFloat(stockStr) || 0;
-
-    var data = {
-      nom: nom,
-      type: type.trim(),
-      unite: unite.trim(),
-      fournisseur: fournisseur.trim(),
-      prixUnitaire: prix,
-      stock: stock
-    };
-
-    if(m){
-      Object.assign(m, data);
-      toast("Matière première mise à jour.");
-    } else {
-      data.id = uid("mat");
-      state.materials.push(data);
-      toast("Matière première ajoutée.");
-    }
+    state.shifts.unshift({ id: uid("sh"), employeeId: empId, date: date, debut: nowHM(), fin: "" });
     persist();
-    renderSuppliers();
-  }
-
-  function deleteMaterial(id){
-    var m = materialById(id);
-    if(!m) return;
-    var n = state.purchases.filter(function(p){ return p.materialId === id; }).length;
-    var msg = n > 0
-      ? 'Supprimer "'+m.nom+" ? "+n+" achat(s) enregistré(s) pour cette matière seront également supprimés du journal des dépenses."
-      : 'Supprimer "'+m.nom+'" ?';
-    if(!confirm(msg)) return;
-    state.materials = state.materials.filter(function(x){ return x.id !== id; });
-    state.purchases = state.purchases.filter(function(p){ return p.materialId !== id; });
-    persist();
-    renderSuppliers();
-    toast("Matière première supprimée.");
-  }
-
-  function deletePurchase(id){
-    var p = state.purchases.find(function(x){ return x.id === id; });
-    if(!p) return;
-    if(!confirm("Supprimer cet achat du journal des dépenses ?")) return;
-    state.purchases = state.purchases.filter(function(x){ return x.id !== id; });
-    persist();
-    renderSuppliers();
-    toast("Achat supprimé.");
-  }
-
-  document.getElementById("pu-date").value = new Date().toISOString().slice(0,10);
-
-  document.getElementById("purchase-form").addEventListener("submit", function(e){
-    e.preventDefault();
-    var materialId = document.getElementById("pu-material").value;
-    var m = materialById(materialId);
-    if(!m) return;
-
-    var fournisseur = document.getElementById("pu-supplier").value.trim() || m.fournisseur || "";
-    var qty = parseFloat(document.getElementById("pu-qty").value) || 0;
-    var prix = parseFloat(document.getElementById("pu-price").value) || 0;
-    var date = document.getElementById("pu-date").value;
-    var reference = document.getElementById("pu-ref").value.trim();
-    if(qty <= 0) return;
-
-    state.purchases.unshift({
-      id: uid("pu"),
-      materialId: materialId,
-      fournisseur: fournisseur,
-      quantite: qty,
-      montant: prix,
-      date: date,
-      reference: reference
-    });
-
-    m.stock = (m.stock||0) + qty;
-
-    persist();
-    this.reset();
-    document.getElementById("pu-date").value = new Date().toISOString().slice(0,10);
-    renderSuppliers();
-    toast("Achat enregistré.");
+    renderTimelog();
+    toast("Prise de service enregistrée.");
   });
 
-  document.getElementById("sup-search").addEventListener("input", renderSuppliersTable);
-  document.getElementById("sup-filter").addEventListener("change", renderSuppliersTable);
-  document.getElementById("btn-sup-add").addEventListener("click", function(){ openMaterialModal(null); });
+  document.getElementById("btn-tl-end").addEventListener("click", function(){
+    var empId = document.getElementById("tl-employee").value;
+    if(!empId){ toast("Sélectionnez un employé."); return; }
+    var ouverts = state.shifts.filter(function(s){ return s.employeeId === empId && !s.fin; });
+    if(ouverts.length === 0){ toast("Aucun service ouvert pour cet employé."); return; }
+    ouverts.sort(function(a,b){ return (a.debut||"") < (b.debut||"") ? 1 : -1; });
+    ouverts[0].fin = nowHM();
+    persist();
+    renderTimelog();
+    toast("Fin de service enregistrée (" + ouverts[0].fin + ").");
+  });
 
-  document.getElementById("btn-sup-export").addEventListener("click", function(){
-    var headers = ["Matière première","Type","Unité","Fournisseur principal","Prix unitaire ($)","Stock actuel","Dépense cumulée ($)"];
-    var rows = state.materials.map(function(m){
-      return [m.nom, m.type, m.unite, m.fournisseur, m.prixUnitaire, m.stock, spendForMaterial(m.id).toFixed(2)];
+  function deleteShift(id){
+    var s = state.shifts.find(function(x){ return x.id === id; });
+    if(!s) return;
+    if(!confirm("Supprimer ce service du relevé ?")) return;
+    state.shifts = state.shifts.filter(function(x){ return x.id !== id; });
+    persist();
+    renderTimelog();
+    toast("Service supprimé.");
+  }
+
+  document.getElementById("tl-filter-emp").addEventListener("change", renderShiftsTable);
+  document.getElementById("tl-filter-date").addEventListener("change", renderShiftsTable);
+  document.getElementById("btn-tl-clear").addEventListener("click", function(){
+    document.getElementById("tl-filter-emp").value = "";
+    document.getElementById("tl-filter-date").value = "";
+    renderShiftsTable();
+  });
+
+  document.getElementById("btn-tl-export").addEventListener("click", function(){
+    var headers = ["Date","Employé","Grade","Prise de service","Fin de service","Durée","Statut"];
+    var rows = state.shifts.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; }).map(function(s){
+      var e = employeeById(s.employeeId);
+      var g = e ? gradeById(e.gradeId) : null;
+      return [s.date, fullName(s.employeeId), g?g.nom:"", s.debut||"", s.fin||"", fmtDuration(shiftDurationMinutes(s)), s.fin?"Terminé":"En service"];
     });
     var csv = "\uFEFF" + [headers].concat(rows).map(function(r){
       return r.map(function(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }).join(";");
     }).join("\r\n");
-    downloadBlob(csv, "woodworks-matiere-premiere.csv", "text/csv;charset=utf-8;");
+    downloadBlob(csv, "woodworks-pointage.csv", "text/csv;charset=utf-8;");
     toast("Export CSV généré.");
   });
+
+  // ---------- CONNEXION EMPLOYE ----------
+  function credFor(employeeId){
+    return state.credentials.find(function(c){ return c.employeeId === employeeId; });
+  }
+
+  function ensureCredFor(employeeId){
+    var c = credFor(employeeId);
+    if(c) return c;
+    var e = employeeById(employeeId);
+    var existing = state.credentials.map(function(x){ return x.username; });
+    c = { employeeId: employeeId, username: makeUsername(e ? e.nom : "employe", existing), password: makePassword() };
+    state.credentials.push(c);
+    return c;
+  }
+
+  var loginOverlay = document.getElementById("login-overlay");
+  var sessionOverlay = document.getElementById("session-overlay");
+
+  function updateSessionUI(){
+    var s = state.session;
+    document.getElementById("session-label").style.display = s ? "inline" : "none";
+    document.getElementById("btn-logout").style.display = s ? "inline-block" : "none";
+    if(s){
+      var e = employeeById(s.employeeId);
+      document.getElementById("session-label").textContent = e ? ("Connecté : " + e.nom) : "";
+    }
+    updateMovementAuthor();
+  }
+
+  document.getElementById("btn-login-open").addEventListener("click", function(){
+    document.getElementById("login-error").textContent = "";
+    document.getElementById("login-user").value = "";
+    document.getElementById("login-pass").value = "";
+    if(state.session){
+      openSessionCard(state.session.employeeId);
+    } else {
+      loginOverlay.classList.remove("hidden");
+    }
+  });
+
+  document.getElementById("btn-login-cancel").addEventListener("click", function(){ loginOverlay.classList.add("hidden"); });
+  loginOverlay.addEventListener("click", function(e){ if(e.target === loginOverlay) loginOverlay.classList.add("hidden"); });
+
+  document.getElementById("btn-logout").addEventListener("click", function(){
+    state.session = null;
+    updateSessionUI();
+    toast("Déconnexion effectuée.");
+  });
+
+  document.getElementById("login-form").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    var u = document.getElementById("login-user").value.trim().toLowerCase();
+    var p = document.getElementById("login-pass").value;
+    var c = state.credentials.find(function(x){ return x.username.toLowerCase() === u && x.password === p; });
+    if(!c){
+      document.getElementById("login-error").textContent = "Identifiant ou mot de passe incorrect.";
+      return;
+    }
+    var e = employeeById(c.employeeId);
+    if(e && e.statut !== "Actif"){
+      document.getElementById("login-error").textContent = "Ce compte est désactivé. Contactez la direction.";
+      return;
+    }
+    state.session = { employeeId: c.employeeId };
+    loginOverlay.classList.add("hidden");
+    updateSessionUI();
+    openSessionCard(c.employeeId);
+  });
+
+  function openSessionCard(employeeId){
+    var e = employeeById(employeeId);
+    if(!e) return;
+    var g = gradeById(e.gradeId);
+    document.getElementById("session-name").textContent = e.nom;
+    document.getElementById("session-role").textContent = (e.poste||"") + (g ? (" · " + g.nom + " (niveau " + g.niveau + ")") : "");
+    document.getElementById("session-info").innerHTML =
+      '<div style="font-size:13px;color:var(--muted);line-height:1.9;">'+
+      '<div><strong>E-mail :</strong> '+escapeHtml(e.email||"—")+'</div>'+
+      '<div><strong>Embauché le :</strong> '+escapeHtml(e.embauche||"—")+'</div>'+
+      '<div><strong>Statut :</strong> '+escapeHtml(e.statut)+'</div>'+
+      '<div><strong>Accès autorisés :</strong> '+escapeHtml(g?accessLabel(g.acces):"—")+'</div>'+
+      '</div>';
+
+    var today = todayISO();
+    var mine = state.shifts.filter(function(s){ return s.employeeId === employeeId && s.date === today; });
+    var mins = mine.reduce(function(acc,s){ return acc + (shiftDurationMinutes(s)||0); }, 0);
+    var open = state.shifts.find(function(s){ return s.employeeId === employeeId && !s.fin; });
+    document.getElementById("session-shift").innerHTML =
+      '<div style="font-size:13px;line-height:1.9;">'+
+      '<div><strong>Services aujourd\'hui :</strong> '+mine.length+'</div>'+
+      '<div><strong>Temps travaillé aujourd\'hui :</strong> '+fmtDuration(mins)+'</div>'+
+      '<div><strong>Service en cours :</strong> '+(open ? ("depuis "+escapeHtml(open.debut)) : "aucun")+'</div>'+
+      '</div>';
+
+    var last = state.shifts.filter(function(s){ return s.employeeId === employeeId; })
+      .sort(function(a,b){ return a.date < b.date ? 1 : -1; }).slice(0,7);
+    document.getElementById("session-history").innerHTML = last.length === 0
+      ? '<div class="empty-note">Aucun service enregistré.</div>'
+      : '<table style="width:100%;font-size:13px;"><thead><tr><th style="padding:6px 4px;background:#f4ead9;">Date</th><th style="padding:6px 4px;background:#f4ead9;">Prise</th><th style="padding:6px 4px;background:#f4ead9;">Fin</th><th style="padding:6px 4px;background:#f4ead9;">Durée</th></tr></thead><tbody>'+
+        last.map(function(s){
+          return '<tr><td style="padding:5px 4px;border-bottom:1px solid var(--border)">'+s.date+'</td>'+
+            '<td style="padding:5px 4px;border-bottom:1px solid var(--border)">'+escapeHtml(s.debut||"—")+'</td>'+
+            '<td style="padding:5px 4px;border-bottom:1px solid var(--border)">'+escapeHtml(s.fin||"—")+'</td>'+
+            '<td style="padding:5px 4px;border-bottom:1px solid var(--border)">'+fmtDuration(shiftDurationMinutes(s))+'</td></tr>';
+        }).join("")+'</tbody></table>';
+
+    sessionOverlay.classList.remove("hidden");
+  }
+
+  document.getElementById("btn-session-close").addEventListener("click", function(){ sessionOverlay.classList.add("hidden"); });
+  sessionOverlay.addEventListener("click", function(e){ if(e.target === sessionOverlay) sessionOverlay.classList.add("hidden"); });
 
   // ---------- EMPLOYES / GRADES ----------
   function gradeById(id){
@@ -1396,7 +1608,7 @@
     list.sort(function(a,b){ return a.nom.localeCompare(b.nom, "fr"); });
 
     if(list.length === 0){
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-note">Aucun employé ne correspond à ces critères.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-note">Aucun employé ne correspond à ces critères.</td></tr>';
       return;
     }
 
@@ -1412,6 +1624,7 @@
         '<td>'+escapeHtml(gradeNom)+'</td>'+
         '<td><span class="badge">Niveau '+niveau+'</span></td>'+
         '<td style="font-size:12px;color:var(--muted);max-width:280px">'+escapeHtml(acces)+'</td>'+
+        '<td style="font-family:monospace;font-size:12px">'+escapeHtml((credFor(e.id)||{}).username||"—")+'</td>'+
         '<td><span class="badge'+(actif?"":" low")+'">'+escapeHtml(e.statut)+'</span></td>'+
         '<td class="actions-cell">'+
           '<button class="btn small secondary" data-emp-edit="'+e.id+'">Modifier</button>'+
@@ -1466,6 +1679,14 @@
     document.getElementById("e-statut").value = e ? e.statut : "Actif";
     populateGradeSelects();
     if(e) document.getElementById("e-grade").value = e.gradeId;
+    var cred = e ? ensureCredFor(e.id) : null;
+    document.getElementById("e-username").value = cred ? cred.username : "(généré à l'enregistrement)";
+    var pb = document.getElementById("e-password-box");
+    if(cred){
+      pb.innerHTML = 'Mot de passe : <strong style="font-family:monospace;color:var(--wood-dark)">'+escapeHtml(cred.password)+'</strong>';
+    } else {
+      pb.textContent = "Un identifiant et un mot de passe seront générés automatiquement.";
+    }
     updateAccessPreview();
     empOverlay.classList.remove("hidden");
   }
@@ -1478,6 +1699,16 @@
       (g.acces||[]).map(function(a){ return '<span class="badge" style="margin:3px 4px 0 0">'+escapeHtml(a)+'</span>'; }).join("");
   }
   document.getElementById("e-grade").addEventListener("change", updateAccessPreview);
+
+  document.getElementById("btn-generate-cred").addEventListener("click", function(){
+    var id = document.getElementById("e-id").value;
+    if(!id){ toast("Enregistrez d'abord l'employé."); return; }
+    var c = ensureCredFor(id);
+    c.password = makePassword();
+    persist();
+    document.getElementById("e-password-box").innerHTML = 'Mot de passe : <strong style="font-family:monospace;color:var(--wood-dark)">'+escapeHtml(c.password)+'</strong>';
+    toast("Nouveau mot de passe généré.");
+  });
 
   document.getElementById("emp-form").addEventListener("submit", function(ev){
     ev.preventDefault();
@@ -1498,11 +1729,13 @@
     } else {
       data.id = uid("e");
       state.employees.push(data);
+      ensureCredFor(data.id);
       toast("Employé ajouté.");
     }
     persist();
     empOverlay.classList.add("hidden");
     renderEmployees();
+    renderTimelog();
   });
 
   function deleteEmployee(id){
@@ -1510,8 +1743,13 @@
     if(!e) return;
     if(!confirm('Retirer "'+e.nom+'" de la liste des employés ?')) return;
     state.employees = state.employees.filter(function(x){ return x.id !== id; });
+    state.credentials = state.credentials.filter(function(c){ return c.employeeId !== id; });
+    state.shifts = state.shifts.filter(function(s){ return s.employeeId !== id; });
+    if(state.session && state.session.employeeId === id) state.session = null;
     persist();
     renderEmployees();
+    renderTimelog();
+    updateSessionUI();
     toast("Employé supprimé.");
   }
 
@@ -1608,10 +1846,11 @@
   document.getElementById("emp-filter-status").addEventListener("change", renderEmployeesTable);
 
   document.getElementById("btn-emp-export").addEventListener("click", function(){
-    var headers = ["Nom","Poste","E-mail","Grade","Niveau","Accès autorisés","Statut","Date d'embauche"];
+    var headers = ["Nom","Poste","E-mail","Grade","Niveau","Accès autorisés","Identifiant","Mot de passe","Statut","Date d'embauche"];
     var rows = state.employees.map(function(e){
       var g = gradeById(e.gradeId);
-      return [e.nom, e.poste, e.email, g?g.nom:"", g?g.niveau:"", g?(g.acces||[]).join(" | "):"", e.statut, e.embauche];
+      var c = credFor(e.id);
+      return [e.nom, e.poste, e.email, g?g.nom:"", g?g.niveau:"", g?(g.acces||[]).join(" | "):"", c?c.username:"", c?c.password:"", e.statut, e.embauche];
     });
     var csv = "\uFEFF" + [headers].concat(rows).map(function(r){
       return r.map(function(v){ return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'; }).join(";");
@@ -1727,7 +1966,7 @@
 
   // ---------- SETTINGS ----------
   document.getElementById("btn-export-json").addEventListener("click", function(){
-    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements, categories: state.categories, materials: state.materials, purchases: state.purchases, employees: state.employees, grades: state.grades };
+    var backup = { exportedAt: new Date().toISOString(), products: state.products, movements: state.movements, categories: state.categories, materials: state.materials, purchases: state.purchases, employees: state.employees, grades: state.grades, shifts: state.shifts, credentials: state.credentials };
     downloadBlob(JSON.stringify(backup, null, 2), "woodworks-sauvegarde.json", "application/json");
     toast("Sauvegarde JSON générée.");
   });
@@ -1745,6 +1984,8 @@
         if(!Array.isArray(data.purchases)) data.purchases = seedPurchases();
         if(!Array.isArray(data.employees)) data.employees = seedEmployees();
         if(!Array.isArray(data.grades)) data.grades = seedGrades();
+        if(!Array.isArray(data.shifts)) data.shifts = seedShifts();
+        if(!Array.isArray(data.credentials)) data.credentials = seedCredentials(data.employees);
         if(!confirm("Importer cette sauvegarde va remplacer toutes les données actuelles. Continuer ?")) return;
         state.products = data.products;
         state.movements = data.movements;
@@ -1753,6 +1994,8 @@
         state.purchases = data.purchases;
         state.employees = data.employees;
         state.grades = data.grades;
+        state.shifts = data.shifts;
+        state.credentials = data.credentials;
         persist();
         refreshFilterOptions();
         renderInventoryTable();
@@ -1761,6 +2004,7 @@
         renderDashboard();
         renderSuppliers();
         renderEmployees();
+        renderTimelog();
         toast("Sauvegarde importée avec succès.");
       }catch(err){
         alert("Le fichier sélectionné n'est pas une sauvegarde valide.");
@@ -1779,6 +2023,9 @@
     state.purchases = seedPurchases();
     state.employees = seedEmployees();
     state.grades = seedGrades();
+    state.shifts = seedShifts();
+    state.credentials = seedCredentials(state.employees);
+    state.session = null;
     persist();
     refreshFilterOptions();
     renderInventoryTable();
@@ -1787,6 +2034,8 @@
     renderDashboard();
     renderSuppliers();
     renderEmployees();
+    renderTimelog();
+    updateSessionUI();
     toast("Données de démonstration restaurées.");
   });
 
@@ -1799,6 +2048,9 @@
   renderDashboard();
   renderSuppliers();
   renderEmployees();
+  renderTimelog();
+  updateSessionUI();
+  updateMovementAuthor();
 
 })();
 </script>
